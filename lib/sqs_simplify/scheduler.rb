@@ -1,10 +1,12 @@
+# frozen_string_literal: true
+
 module SqsSimplify
   class Scheduler < SqsSimplify::Base
+    include SqsSimplify::ExecutionHook
     attr_accessor :message, :attributes
 
-    def initialize(message, attributes: nil)
+    def initialize(message)
       @message = message
-      @attributes = attributes
     end
 
     def now
@@ -34,12 +36,31 @@ module SqsSimplify
     private_class_method :new
 
     class << self
-      def mapped_queue(value)
-        SqsSimplify.mapped_schedulers[name] = value
+      def send_message(message)
+        new(message)
       end
 
-      def send_message(message, **option)
-        new(message, **option)
+      def map_queue(queue_name, queue_url)
+        name = queue_name.to_s
+        mapped_queues[name] = queue_url
+        const_name = name.capitalize
+
+        class_eval <<~M, __FILE__, __LINE__ + 1
+          class #{const_name} < #{self}
+            default_url '#{queue_url}'
+          end
+
+          private_constant '#{const_name}'
+          def self.#{name}
+            #{const_name}
+          end
+        M
+      end
+
+      private
+
+      def mapped_queues
+        @mapped_queues ||= {}
       end
     end
   end

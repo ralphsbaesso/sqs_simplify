@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.describe SqsSimplify::Scheduler do
   context 'private constant' do
     it 'should raise an exception' do
@@ -6,6 +8,15 @@ RSpec.describe SqsSimplify::Scheduler do
   end
 
   context 'class methods' do
+    context 'dynamic map' do
+      it 'must respond to methods from Scheduler' do
+        const_input = SchedulerExample.input
+        expect(const_input).to respond_to(:send_message, :count_messages)
+
+        expect { SchedulerExample::Input }.to raise_error(/private constant/)
+      end
+    end
+
     context '.send_message' do
       it 'send message and perform now' do
         message = { a: 'a' }

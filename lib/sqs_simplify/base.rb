@@ -19,17 +19,22 @@ module SqsSimplify
     end
 
     class << self
-      def set(key, value)
-        mapped_queue(value) if key.to_s == 'queue_url'
-        config[key.to_s] = value
+      attr_reader :queue_url
+
+      def default_url(queue_url)
+        @queue_url = queue_url
       end
 
-      def setting(key)
-        config[key.to_s]
+      def count_messages
+        approximate_number_of_messages
       end
 
-      def queue_url
-        setting :queue_url
+      def approximate_number_of_messages
+        queue_info['ApproximateNumberOfMessages'].to_i
+      end
+
+      def queue_info
+        client.get_queue_attributes(queue_url: queue_url, attribute_names: ['All']).attributes
       end
 
       def dump_message(value)
@@ -45,17 +50,22 @@ module SqsSimplify
         end
       end
 
-      def load_message(value)
+      def load_message(message)
+        body = message.body
         dump_message = setting(:dump_message) || :to_json
 
         case dump_message
         when Proc
-          dump_message.call value
+          dump_message.call body
         when :to_json
-          value.to_json
+          JSON.parse(body)
         else
-          value
+          body
         end
+      end
+
+      def setting(key)
+        config[key.to_s]
       end
 
       private

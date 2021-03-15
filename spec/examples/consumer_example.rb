@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ConsumerExample < SqsSimplify::Consumer
-  set :queue_url, 'https://aws.amazon/my_queue'
+  default_url 'https://aws.amazon/my_queue'
 end

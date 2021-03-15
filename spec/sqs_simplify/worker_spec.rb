@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.describe SqsSimplify::Worker do
   context 'class methods' do
     context '.hooks' do

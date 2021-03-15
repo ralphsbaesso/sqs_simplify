@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.describe SqsSimplify::Consumer do
   context 'instance methods' do
     context '.consume_messages' do
@@ -16,10 +18,6 @@ RSpec.describe SqsSimplify::Consumer do
         expect(response).to eq(true)
       end
     end
-  end
-
-  it 'must identify consumer class' do
-    expect(SqsSimplify.mapped_consumers[ConsumerExample.name]).to be_truthy
   end
 
   private

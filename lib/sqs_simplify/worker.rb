@@ -17,34 +17,46 @@ module SqsSimplify
 
       start_time = Time.now
       logger.info "Started loop with: { class_name: #{@klass.name}, threads: #{threads}, messages: #{messages.count} }"
-
-      amount_threads = [threads, messages.count].min
-      if messages.present?
-        Parallel.map(messages, in_threads: amount_threads) do |message|
-          call_hook(:before_each, message)
-          body = @klass.load_message(message)
-          @klass.consume_message(body)
-          @klass.send :delete_message, message
-          call_hook(:after_each, message)
-        end
-
-        logger.info "Finished in #{(Time.now - start_time).to_f} seconds"
-      else
+      unless messages.present?
         logger.info 'Finished without messages'
+        return 0
       end
 
+      amount_threads = [threads, messages.count].min
+      if amount_threads == 1
+        messages.each { |sqs_message| consume_sqs_message(sqs_message) }
+      else
+        Parallel.each(messages, in_threads: amount_threads) { |sqs_message| consume_sqs_message(sqs_message) }
+      end
+
+      logger.info "Finished in #{(Time.now - start_time).to_f} seconds"
       call_hook(:after_all, messages)
     rescue Exception => e
-      logger.warn e.message
-      logger.warn e.backtrace.join("\n")
-      call_hook :resolver_exception, e, messages
+      resolver_exception e, messages: messages
     ensure
-      messages&.count || 0
+      return messages&.count || 0
     end
 
     private
 
-    def call_hook(type, arg = nil, *args)
+    def consume_sqs_message(sqs_message)
+      call_hook(:before_each, sqs_message)
+      body = @klass.load_message(sqs_message)
+      @klass.consume_message(body)
+      call_hook(:after_each, sqs_message)
+    rescue Exception => e
+      resolver_exception e, sqs_message: sqs_message
+    ensure
+      @klass.send :delete_message, sqs_message
+    end
+
+    def resolver_exception(e, obj)
+      logger.warn e.message
+      logger.warn e.backtrace.join("\n")
+      call_hook :resolver_exception, e, obj
+    end
+
+    def call_hook(type, arg = nil, args = {})
       self.class.call_hook(type, arg, args)
       @klass.call_hook(type, arg, args)
     end

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'simplecov_config'
 require 'bundler/setup'
 require 'sqs_simplify'
 require 'examples/consumer_example'

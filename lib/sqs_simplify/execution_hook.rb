@@ -13,9 +13,9 @@ module SqsSimplify
         hooks[type] = block
       end
 
-      def call_hook(type, arg = nil, *args)
+      def call_hook(type, arg = nil, args = {})
         block = hooks[type.to_sym]
-        block.call(arg, *args) if block.is_a?(Proc)
+        block.call(arg, args) if block.is_a?(Proc)
       end
 
       def hooks

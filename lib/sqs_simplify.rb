@@ -14,6 +14,7 @@ require 'sqs_simplify/command'
 require 'sqs_simplify/consumer'
 require 'sqs_simplify/faker_client'
 
+require 'sqs_simplify/message'
 require 'sqs_simplify/scheduler'
 require 'sqs_simplify/version'
 require 'sqs_simplify/worker'

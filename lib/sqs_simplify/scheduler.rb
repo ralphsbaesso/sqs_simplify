@@ -23,14 +23,17 @@ module SqsSimplify
 
     private
 
-    def send_message(**option)
-      sqs_message = {
-        queue_url: queue_url,
-        message_body: dump_message(message),
-        message_attributes: attributes
-      }.merge(option).compact
+    def send_message(**options)
+      sqs_message = Message.new queue_url: queue_url,
+                                body: dump_message(message),
+                                **options
 
-      client.send_message(sqs_message).message_id
+      self.class.call_hook :before_each, sqs_message
+      client.send_message(sqs_message.to_send).message_id
+    rescue StandardError => e
+      self.class.call_hook :resolver_exception, e, sqs_message: sqs_message
+    ensure
+      self.class.call_hook :after_each, sqs_message
     end
 
     private_class_method :new

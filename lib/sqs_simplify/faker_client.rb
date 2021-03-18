@@ -4,7 +4,10 @@ module SqsSimplify
   class FakerClient
     def send_message(sqs_message)
       id = next_id
-      pool << OpenStruct.new(sqs_message.merge(id: id, receipt_handle: id))
+      message = OpenStruct.new receipt_handle: id,
+                               body: sqs_message[:message_body],
+                               queue_url: sqs_message[:queue_url]
+      pool << message
       OpenStruct.new(message_id: id)
     end
 
@@ -46,14 +49,18 @@ module SqsSimplify
     end
 
     class << self
-      def pool
-        @pool ||= []
-      end
-
       def next_id
         @next_id ||= 0
         @next_id += 1
         @next_id.to_s(16)
+      end
+
+      def pool
+        @pool ||= []
+      end
+
+      def purger!
+        @pool = []
       end
     end
   end

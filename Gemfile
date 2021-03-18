@@ -12,3 +12,7 @@ gem 'parallel', '~> 1.20', '>= 1.20.1'
 gem 'rake', '~> 12.0'
 gem 'rspec', '~> 3.0'
 gem 'rubocop', require: false
+
+group :test do
+  gem 'simplecov', require: false
+end

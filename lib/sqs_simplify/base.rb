@@ -21,8 +21,17 @@ module SqsSimplify
     class << self
       attr_reader :queue_url
 
-      def default_url(queue_url)
-        @queue_url = queue_url
+      def default_url(queue_url = nil, queue_host: nil, queue_name: nil, queue_prefix: nil, queue_suffix: nil)
+        queue_prefix ||= SqsSimplify.setting.queue_prefix
+        queue_suffix ||= SqsSimplify.setting.queue_suffix
+
+        if queue_url && !queue_url.empty?
+          @queue_url = queue_url
+        else
+          path = [queue_prefix, queue_name, queue_suffix]
+                 .reject { |str| str.nil? || str.empty? }.join('_')
+          @queue_url = "#{queue_host}/#{path}"
+        end
       end
 
       def count_messages

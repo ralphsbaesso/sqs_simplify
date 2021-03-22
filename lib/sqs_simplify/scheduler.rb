@@ -43,21 +43,26 @@ module SqsSimplify
         new(message)
       end
 
-      def map_queue(queue_name, queue_url)
-        name = queue_name.to_s
-        mapped_queues[name] = queue_url
-        const_name = name.capitalize
+      def map_queue(nickname, queue_url = nil, queue_host: nil, queue_name: nil, queue_prefix: nil, queue_suffix: nil)
+        nickname = nickname.to_s
+        const_name = nickname.capitalize
 
         class_eval <<~M, __FILE__, __LINE__ + 1
           class #{const_name} < #{self}
-            default_url '#{queue_url}'
+            default_url #{queue_url ? "\"#{queue_url}\"" : 'nil'},
+            queue_host: #{queue_host ? "\"#{queue_host}\"" : 'nil'},
+            queue_name: #{queue_name ? "\"#{queue_name}\"" : 'nil'},
+            queue_prefix: #{queue_prefix ? "\"#{queue_prefix}\"" : 'nil'},
+            queue_suffix: #{queue_suffix ? "\"#{queue_suffix}\"" : 'nil'}
           end
 
           private_constant '#{const_name}'
-          def self.#{name}
+          def self.#{nickname}
             #{const_name}
           end
         M
+
+        mapped_queues[nickname] = const_get(const_name).queue_url
       end
 
       private

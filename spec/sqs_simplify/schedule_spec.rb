@@ -28,6 +28,37 @@ RSpec.describe SqsSimplify::Scheduler do
       end
     end
 
+    context '.queue_url' do
+      it 'default' do
+        expect(SchedulerExample1.queue_url).to eq('https://aws.amazon/queues')
+        expect(SchedulerExample1.inner.queue_url).to eq('https://aws.amazon/queues1')
+      end
+
+      it 'with prefix' do
+        expect(SchedulerExample2.queue_url).to eq('https://aws.amazon/environment_queue_name')
+        expect(SchedulerExample2.inner.queue_url).to eq('https://aws.amazon/environment_input')
+      end
+
+      it 'with suffix' do
+        expect(SchedulerExample3.queue_url).to eq('https://aws.amazon/queue_name_final')
+        expect(SchedulerExample3.inner.queue_url).to eq('https://aws.amazon/input_final')
+      end
+
+      context 'prefix and suffix configured in SqsSiplify' do
+        it do
+          SqsSimplify.configure do |config|
+            config.queue_prefix = 'aaa'
+            config.queue_suffix = 'bbb'
+          end
+
+          require_relative '../examples/scheduler_other_example'
+
+          expect(SchedulerExample4.queue_url).to include('aaa_', '_bbb')
+          expect(SchedulerExample4.output.queue_url).to include('aaa_', '_bbb')
+        end
+      end
+    end
+
     it 'send message and perform later' do
       message = { a: 'a' }
       perform = SchedulerExample.send_message message

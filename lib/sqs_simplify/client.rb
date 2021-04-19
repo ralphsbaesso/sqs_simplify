@@ -13,7 +13,8 @@ module SqsSimplify
         args = {
           access_key_id: SqsSimplify.setting.access_key_id,
           secret_access_key: SqsSimplify.setting.secret_access_key,
-          region: SqsSimplify.setting.region
+          region: SqsSimplify.setting.region,
+          stub_responses: SqsSimplify.setting.stub_responses
         }.select { |_k, v| v }
 
         @client =

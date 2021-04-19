@@ -20,6 +20,8 @@ require 'sqs_simplify/version'
 require 'sqs_simplify/worker'
 
 module SqsSimplify
+  include SqsSimplify::ExecutionHook
+
   class Error < StandardError; end
 
   class << self
@@ -29,14 +31,26 @@ module SqsSimplify
 
     def setting
       @setting ||= OpenStruct.new(
-        worker: SqsSimplify::Worker,
+        hooks: self,
+        worker: self::Worker,
         root: Pathname.new(Dir.pwd)
       )
     end
 
+    def consumers
+      @consumers ||= {}
+    end
+
+    def schedulers
+      @schedulers ||= {}
+    end
+
     def logger
-      @logger ||= Logger.new(setting.log_dir ||
-                  "#{setting.root}/log/sqs_simplify.log")
+      return @logger if @logger
+
+      path = setting.log_dir || "#{setting.root}/log"
+      FileUtils.mkdir_p(path) unless File.directory?(path)
+      @logger = Logger.new("#{path}/sqs_simplify.log")
     end
   end
 end

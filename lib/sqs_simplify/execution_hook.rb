@@ -15,7 +15,8 @@ module SqsSimplify
 
       def call_hook(type, arg = nil, args = {})
         block = hooks[type.to_sym]
-        block.call(arg, args) if block.is_a?(Proc)
+        SqsSimplify.call_hook(type, arg, args) unless self == SqsSimplify
+        block&.call(arg, args)
       end
 
       def hooks

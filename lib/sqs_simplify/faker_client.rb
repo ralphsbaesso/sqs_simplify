@@ -38,6 +38,10 @@ module SqsSimplify
                      })
     end
 
+    def get_queue_url(queue_name:)
+      OpenStruct.new queue_url: "http//sqs_faker/#{queue_name}"
+    end
+
     private
 
     def pool

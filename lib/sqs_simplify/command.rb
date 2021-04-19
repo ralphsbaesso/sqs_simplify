@@ -6,6 +6,8 @@ require 'optparse'
 module SqsSimplify
   class Command
     def initialize(args = nil)
+      check_rails
+
       @options = {
         pid_dir: "#{root}/tmp/pids",
         log_dir: "#{root}/log"
@@ -41,6 +43,7 @@ module SqsSimplify
     def daemonize
       dir = @options[:pid_dir]
       FileUtils.mkdir_p(dir) unless File.exist?(dir)
+      before_fork
       run_process
     end
 
@@ -57,6 +60,7 @@ module SqsSimplify
 
     def run(process_name)
       Daemons.run_proc(process_name, dir: @options[:pid_dir], dir_mode: :normal, ARGV: @args) do
+        after_fork
         running = true
         trap('TERM') { running = false }
         trap('SIGINT') { running = false }
@@ -70,6 +74,37 @@ module SqsSimplify
 
     def root
       @root ||= SqsSimplify.setting.root
+    end
+
+    private
+
+    def after_fork
+      @files_to_reopen.each do |file|
+        begin
+          file.reopen file.path, 'a+'
+          file.sync = true
+        rescue StandardError
+          # Ignored
+        end
+      end
+    end
+
+    def before_fork
+      return if @files_to_reopen
+
+      @files_to_reopen = []
+      ObjectSpace.each_object(File) do |file|
+        @files_to_reopen << file unless file.closed?
+      end
+    end
+
+    def check_rails
+      if Object.const_defined?('Rails')
+        SqsSimplify.logger.info "Initializing Rails project\n"
+        Rails.configuration.eager_load = true
+        Rails.configuration.allow_concurrency = true
+        Rails.application.eager_load!
+      end
     end
   end
 end

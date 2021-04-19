@@ -19,6 +19,7 @@ RSpec.describe SqsSimplify::Scheduler do
 
     context '.send_message' do
       it 'send message and perform now' do
+        allow(SchedulerExample).to receive(:queue_url).and_return('http://amozon.com')
         message = { a: 'a' }
         perform = SchedulerExample.send_message message
 
@@ -30,18 +31,34 @@ RSpec.describe SqsSimplify::Scheduler do
 
     context '.queue_url' do
       it 'default' do
-        expect(SchedulerExample1.queue_url).to eq('https://aws.amazon/queues')
-        expect(SchedulerExample1.inner.queue_url).to eq('https://aws.amazon/queues1')
+        expect(SchedulerExample1.queue_url).to_not be_nil
+        expect(SchedulerExample1.queue_name).to eq('scheduler_example1')
+        expect(SchedulerExample1.inner.queue_url).to_not be_nil
+        expect(SchedulerExample1.inner.queue_name).to eq('scheduler_example1_inner')
       end
 
-      it 'with prefix' do
-        expect(SchedulerExample2.queue_url).to eq('https://aws.amazon/environment_queue_name')
-        expect(SchedulerExample2.inner.queue_url).to eq('https://aws.amazon/environment_input')
+      context 'with prefix' do
+        before { SqsSimplify.configure.queue_prefix = 'environment' }
+        after { SqsSimplify.configure.queue_prefix = nil }
+
+        it do
+          expect(SchedulerExample2.queue_url).to_not be_nil
+          expect(SchedulerExample2.queue_name).to eq('environment_queue_name')
+          expect(SchedulerExample2.inner.queue_url).to_not be_nil
+          expect(SchedulerExample2.inner.queue_name).to eq('environment_input')
+        end
       end
 
-      it 'with suffix' do
-        expect(SchedulerExample3.queue_url).to eq('https://aws.amazon/queue_name_final')
-        expect(SchedulerExample3.inner.queue_url).to eq('https://aws.amazon/input_final')
+      context 'with suffix' do
+        before { SqsSimplify.configure.queue_suffix = 'final' }
+        after { SqsSimplify.configure.queue_suffix = nil }
+
+        it do
+          expect(SchedulerExample3.queue_url).to_not be_nil
+          expect(SchedulerExample3.queue_name).to eq('queue_name_final')
+          expect(SchedulerExample3.inner.queue_url).to_not be_nil
+          expect(SchedulerExample3.inner.queue_name).to eq('input_final')
+        end
       end
 
       context 'prefix and suffix configured in SqsSiplify' do
@@ -53,13 +70,29 @@ RSpec.describe SqsSimplify::Scheduler do
 
           require_relative '../examples/scheduler_other_example'
 
-          expect(SchedulerExample4.queue_url).to include('aaa_', '_bbb')
-          expect(SchedulerExample4.output.queue_url).to include('aaa_', '_bbb')
+          expect(SchedulerExample4.queue_name).to include('aaa_', '_bbb')
+          expect(SchedulerExample4.output.queue_name).to include('aaa_', '_bbb')
         end
       end
     end
 
+    context '.call_hook' do
+      before do
+        SchedulerExample.resolver_exception do |a, b|
+          @error_occurred = true
+        end
+      end
+
+      it 'must mark error_occurred as true' do
+        allow_any_instance_of(Aws::SQS::Client).to receive(:send_message).and_raise('One error')
+        SchedulerExample.send_message({ payload: 123 }).now
+        expect(@error_occurred).to be_truthy
+      end
+    end
+
     it 'send message and perform later' do
+      allow(SchedulerExample).to receive(:queue_url).and_return('http://amozon.com')
+
       message = { a: 'a' }
       perform = SchedulerExample.send_message message
 

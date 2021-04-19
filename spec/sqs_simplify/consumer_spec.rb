@@ -4,6 +4,7 @@ RSpec.describe SqsSimplify::Consumer do
   context 'instance methods' do
     context '.consume_messages' do
       before do
+        allow(ConsumerExample).to receive(:queue_url).and_return('https://aws.amazon.com')
         allow_any_instance_of(Aws::SQS::Types::ReceiveMessageResult)
           .to receive(:messages).and_return(build_messages)
       end
@@ -11,7 +12,7 @@ RSpec.describe SqsSimplify::Consumer do
         messages = ConsumerExample.send :fetch_messages
         expect(messages.count).to eq(5)
 
-        expect { ConsumerExample.consume_message(messages.first) }
+        expect { ConsumerExample.new(messages.first).perform }
           .to raise_error('Must implement this method')
 
         response = ConsumerExample.send :delete_message, messages.first
@@ -26,7 +27,7 @@ RSpec.describe SqsSimplify::Consumer do
     messages = []
     5.times do |index|
       messages << OpenStruct.new(
-        body: "text #{index}",
+        body: { text: index }.to_json,
         receipt_handle: index.to_s,
         message_attributes: {}
       )

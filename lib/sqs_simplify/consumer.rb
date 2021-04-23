@@ -50,17 +50,21 @@ module SqsSimplify
 
       def consume_sqs_messages(sqs_messages)
         call_hook(:before_all, sqs_messages)
-        Timeout.timeout(visibility_timeout) do
-          benchmark { choose_process(sqs_messages) }
-        end
+        benchmark { choose_process(sqs_messages) }
         call_hook(:after_all, sqs_messages)
       end
 
       def consume_sqs_message(sqs_message)
         consumer = new(sqs_message)
         call_hook(:before_each, sqs_message, consumer: consumer)
-        around.is_a?(Proc) ? around.call(consumer) : consumer.perform
+
+        Timeout.timeout(visibility_timeout) do
+          around.is_a?(Proc) ? around.call(consumer) : consumer.perform
+        end
+
         call_hook(:after_each, sqs_message, consumer: consumer)
+      rescue TimeoutError
+        consumer&.delete_sqs_message = false
       rescue Exception => e
         call_hook :resolver_exception, e, consumer: consumer
       ensure

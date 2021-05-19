@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 RSpec.describe SqsSimplify::Base do
-
   context 'class methods' do
     context 'dump_message' do
       it 'must return String' do

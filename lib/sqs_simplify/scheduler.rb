@@ -47,20 +47,19 @@ module SqsSimplify
         new(message)
       end
 
-      def map_queue(nickname, queue_name: nil)
+      def map_queue(nickname, &block)
         const_name = nickname.capitalize
 
         class_eval <<~M, __FILE__, __LINE__ + 1
-          class #{const_name} < #{self}
-            define_queue_name(#{queue_name ? "\"#{queue_name}\"" : 'nil'})
-          end
-
+          class #{const_name} < #{self}; end
           private_constant '#{const_name}'
+
           def self.#{nickname}
             #{const_name}
           end
         M
 
+        block&.call send(nickname)
         mapped_queues[nickname] = const_get(const_name).name
       end
 

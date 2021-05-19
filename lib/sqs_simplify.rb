@@ -26,11 +26,11 @@ module SqsSimplify
 
   class << self
     def configure
-      block_given? ? yield(setting) : setting
+      block_given? ? yield(settings) : settings
     end
 
-    def setting
-      @setting ||= OpenStruct.new(
+    def settings
+      @settings ||= OpenStruct.new(
         hooks: self,
         worker: self::Worker,
         root: Pathname.new(Dir.pwd)
@@ -48,7 +48,7 @@ module SqsSimplify
     def logger
       return @logger if @logger
 
-      path = setting.log_dir || "#{setting.root}/log"
+      path = settings.log_dir || "#{settings.root}/log"
       FileUtils.mkdir_p(path) unless File.directory?(path)
       @logger = Logger.new("#{path}/sqs_simplify.log")
     end

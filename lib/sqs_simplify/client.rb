@@ -11,14 +11,14 @@ module SqsSimplify
         return @client if @client
 
         args = {
-          access_key_id: SqsSimplify.setting.access_key_id,
-          secret_access_key: SqsSimplify.setting.secret_access_key,
-          region: SqsSimplify.setting.region,
-          stub_responses: SqsSimplify.setting.stub_responses
+          access_key_id: SqsSimplify.settings.access_key_id,
+          secret_access_key: SqsSimplify.settings.secret_access_key,
+          region: SqsSimplify.settings.region,
+          stub_responses: SqsSimplify.settings.stub_responses
         }.select { |_k, v| v }
 
         @client =
-          if SqsSimplify.setting.faker
+          if SqsSimplify.settings.faker
             SqsSimplify::FakerClient.new
           else
             Aws::SQS::Client.new(args)

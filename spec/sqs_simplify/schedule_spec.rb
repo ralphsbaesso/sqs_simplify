@@ -78,7 +78,7 @@ RSpec.describe SqsSimplify::Scheduler do
 
     context '.call_hook' do
       before do
-        SchedulerExample.resolver_exception do |a, b|
+        SchedulerExample.resolver_exception do |_a, _b|
           @error_occurred = true
         end
       end

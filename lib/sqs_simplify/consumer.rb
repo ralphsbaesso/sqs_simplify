@@ -82,7 +82,8 @@ module SqsSimplify
 
       def choose_process(messages)
         parallel_type, amount_processes =
-          if %w[in_threads in_processes].include?(self.parallel_type.to_s) && self.amount_processes > 1 && messages.count > 1
+          if %w[in_threads
+                in_processes].include?(self.parallel_type.to_s) && self.amount_processes > 1 && messages.count > 1
             [self.parallel_type, self.amount_processes]
           else
             [:without_parallel, 1]
@@ -118,7 +119,6 @@ module SqsSimplify
       def around(&block)
         hooks[:around] = block
       end
-
     end
   end
 end

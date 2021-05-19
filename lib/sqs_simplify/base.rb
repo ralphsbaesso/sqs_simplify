@@ -6,6 +6,13 @@ module SqsSimplify
   class Base
     include SqsSimplify::Client
 
+    VISIBILITY_TIMEOUT = 10 * 60
+    MESSAGE_RETENTION_PERIOD = 14 * 24 * 60 * 60
+    DELAY_SECONDS = 0
+
+    VISIBILITY_TIMEOUT_DEAD = 60 * 60
+    MESSAGE_RETENTION_PERIOD_DEAD = 14 * 24 * 60 * 60
+
     protected
 
     def dump_message(value)
@@ -17,17 +24,20 @@ module SqsSimplify
     end
 
     class << self
-
-      def define_queue_name(name)
-        return unless name
-
-        @name = name
-        if self < SqsSimplify::Consumer
-          SqsSimplify.consumers[name.to_sym] = self
-        elsif self < SqsSimplify::Scheduler
-          SqsSimplify.schedulers[name.to_sym] = self
-        end
+      def set(key, value)
+        settings[key.to_sym] = value
       end
+
+      # def define_queue_name(name)
+      #   # return unless name
+      #
+      #   @name = name
+      #   if self < SqsSimplify::Consumer
+      #     SqsSimplify.consumers[name.to_sym] = self
+      #   elsif self < SqsSimplify::Scheduler
+      #     SqsSimplify.schedulers[name.to_sym] = self
+      #   end
+      # end
 
       def define_visibility_timeout(value)
         @visibility_timeout = value
@@ -45,9 +55,9 @@ module SqsSimplify
         return @queue_name if @queue_name
 
         @queue_name = [
-          SqsSimplify.setting.queue_prefix,
-          @name || to_underscore(self.name),
-          SqsSimplify.setting.queue_suffix
+          SqsSimplify.settings.queue_prefix,
+          settings[:queue_name] || to_underscore(name),
+          SqsSimplify.settings.queue_suffix
         ].compact.join('_')
       end
 
@@ -89,7 +99,7 @@ module SqsSimplify
       end
 
       def dump_message(value)
-        dump_message = setting(:dump_message) || :to_json
+        dump_message = settings[:dump_message] || :to_json
 
         case dump_message
         when Proc
@@ -103,7 +113,7 @@ module SqsSimplify
 
       def load_message(message)
         body = message.body
-        load_message = setting(:load_message) || :to_json
+        load_message = settings[:load_message] || :to_json
 
         case load_message
         when Proc
@@ -115,8 +125,8 @@ module SqsSimplify
         end
       end
 
-      def setting(key)
-        config[key.to_s]
+      def settings
+        @settings ||= {}
       end
 
       def create_queue_and_dead_queue
@@ -127,9 +137,9 @@ module SqsSimplify
       def create_queue
         return if find_queue_by_name(queue_name)
 
-        visibility_timeout = @visibility_timeout || 10 * 60 # Should be between 0 seconds and 12 hours.
-        message_retention_period = @message_retention_period || 14 * 24 * 60 * 60 # retention, Should be between 1 minute and 14 days.
-        delay_seconds = @delay_seconds || 0
+        visibility_timeout = @visibility_timeout || VISIBILITY_TIMEOUT # Should be between 0 seconds and 12 hours.
+        message_retention_period = @message_retention_period || MESSAGE_RETENTION_PERIOD # retention, Should be between 1 minute and 14 days.
+        delay_seconds = @delay_seconds || DELAY_SECONDS
 
         client.create_queue(
           queue_name: queue_name,
@@ -234,16 +244,26 @@ module SqsSimplify
         true
       end
 
-      def config
-        @config ||= {}
-      end
-
       def to_underscore(value)
         value.gsub(/::/, '_')
              .gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
              .gsub(/([a-z\d])([A-Z])/, '\1_\2')
              .tr('-', '_')
              .downcase
+      end
+
+      def inherited(sub)
+        super
+        return if %w[SqsSimplify::Job SqsSimplify::Consumer SqsSimplify::Scheduler].include? sub.name
+
+        name = to_underscore(sub.name)
+        sub.set :queue_name, name
+
+        if sub < SqsSimplify::Consumer
+          SqsSimplify.consumers[name.to_sym] = sub
+        elsif sub < SqsSimplify::Scheduler
+          SqsSimplify.schedulers[name.to_sym] = sub
+        end
       end
     end
   end

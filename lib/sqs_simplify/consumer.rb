@@ -3,9 +3,7 @@
 module SqsSimplify
   class Consumer < SqsSimplify::Base
     include SqsSimplify::ExecutionHook
-
     attr_accessor :delete_sqs_message
-    attr_reader :message, :sqs_message
 
     def initialize(sqs_message)
       @sqs_message = sqs_message
@@ -17,26 +15,30 @@ module SqsSimplify
       raise 'Must implement this method'
     end
 
+    protected
+
+    attr_reader :message, :sqs_message
+
     def delete_sqs_message?
       @delete_sqs_message
     end
 
     class << self
-      def define_parallel_type(value)
-        @parallel_type = value
+      protected
+
+      def parallel_type
+        settings[:parallel_type]
       end
 
-      def define_amount_processes(value)
-        @amount_processes = value
+      def amount_processes
+        settings[:amount_processes]
       end
-
-      attr_reader :parallel_type, :amount_processes
 
       private
 
       def consume_messages
         sqs_messages = fetch_messages
-        unless sqs_messages.present?
+        if sqs_messages.empty?
           logger.info 'Finished without messages'
           return 0
         end

@@ -2,12 +2,13 @@
 
 RSpec.describe SqsSimplify::Consumer do
   context 'instance methods' do
-    context '.consume_messages' do
+    context '#consume_messages' do
       before do
         allow(ConsumerExample).to receive(:queue_url).and_return('https://aws.amazon.com')
         allow_any_instance_of(Aws::SQS::Types::ReceiveMessageResult)
           .to receive(:messages).and_return(build_messages)
       end
+
       it 'must return messages' do
         messages = ConsumerExample.send :fetch_messages
         expect(messages.count).to eq(5)
@@ -17,6 +18,32 @@ RSpec.describe SqsSimplify::Consumer do
 
         response = ConsumerExample.send :delete_message, messages.first
         expect(response).to eq(true)
+      end
+    end
+  end
+
+  context 'class methods' do
+    context '.amount_processes' do
+      it do
+        expect(ConsumerExample.send(:amount_processes)).to be_nil
+
+        ConsumerExample.set :amount_processes, 10
+        expect(ConsumerExample.send(:amount_processes)).to eq(10)
+      end
+    end
+
+    context '.consume_messages' do
+      before do
+        SqsSimplify.configure.faker = true
+        ConsumerExample.instance_variable_set :@client, nil
+      end
+      after do
+        SqsSimplify.configure.faker = nil
+        ConsumerExample.instance_variable_set :@client, nil
+      end
+
+      it 'must return 0 without messages' do
+        expect(ConsumerExample.send(:consume_messages)).to eq(0)
       end
     end
   end

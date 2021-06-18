@@ -28,17 +28,6 @@ module SqsSimplify
         settings[key.to_sym] = value
       end
 
-      # def define_queue_name(name)
-      #   # return unless name
-      #
-      #   @name = name
-      #   if self < SqsSimplify::Consumer
-      #     SqsSimplify.consumers[name.to_sym] = self
-      #   elsif self < SqsSimplify::Scheduler
-      #     SqsSimplify.schedulers[name.to_sym] = self
-      #   end
-      # end
-
       def define_visibility_timeout(value)
         @visibility_timeout = value
       end
@@ -254,6 +243,7 @@ module SqsSimplify
 
       def inherited(sub)
         super
+        return if sub.name.nil?
         return if %w[SqsSimplify::Job SqsSimplify::Consumer SqsSimplify::Scheduler].include? sub.name
 
         name = to_underscore(sub.name)
@@ -261,6 +251,8 @@ module SqsSimplify
 
         if sub < SqsSimplify::Consumer
           SqsSimplify.consumers[name.to_sym] = sub
+        elsif sub < SqsSimplify::Job
+          SqsSimplify.jobs[name.to_sym] = sub.consumer
         elsif sub < SqsSimplify::Scheduler
           SqsSimplify.schedulers[name.to_sym] = sub
         end

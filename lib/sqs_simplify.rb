@@ -17,7 +17,9 @@ require 'sqs_simplify/faker_client'
 require 'sqs_simplify/message'
 require 'sqs_simplify/scheduler'
 require 'sqs_simplify/version'
+
 require 'sqs_simplify/worker'
+require 'sqs_simplify/job'
 
 module SqsSimplify
   include SqsSimplify::ExecutionHook
@@ -43,6 +45,10 @@ module SqsSimplify
 
     def schedulers
       @schedulers ||= {}
+    end
+
+    def jobs
+      @jobs ||= {}
     end
 
     def logger

@@ -34,6 +34,9 @@ module SqsSimplify
 
       self.class.call_hook :before_each, sqs_message
       client.send_message(sqs_message.to_send).message_id
+    rescue Aws::SQS::Errors::NonExistentQueue => e
+      self.class.call_hook :resolver_exception, e, queueurl: queue_url, sqs_message: sqs_message
+      raise e
     rescue StandardError => e
       self.class.call_hook :resolver_exception, e, sqs_message: sqs_message
     ensure

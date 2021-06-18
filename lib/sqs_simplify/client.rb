@@ -2,6 +2,8 @@
 
 module SqsSimplify
   module Client
+    protected
+
     def client
       self.class.client
     end

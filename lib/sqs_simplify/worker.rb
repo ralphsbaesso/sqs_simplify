@@ -4,10 +4,10 @@ module SqsSimplify
   class Worker
     class << self
       def work
-        consumers = SqsSimplify.consumers
+        consumers = SqsSimplify.consumers.values + SqsSimplify.jobs.values
         raise 'Consumers not configured' unless consumers.present?
 
-        amount = consumers.values.map do |consumer|
+        amount = consumers.map do |consumer|
           consumer.send :consume_messages
         end
         amount.reduce(&:+)

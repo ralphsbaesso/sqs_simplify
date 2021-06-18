@@ -73,7 +73,7 @@ module SqsSimplify
     end
 
     def root
-      @root ||= SqsSimplify.setting.root
+      @root ||= SqsSimplify.settings.root
     end
 
     private

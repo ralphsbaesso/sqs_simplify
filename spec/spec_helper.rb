@@ -3,8 +3,10 @@
 require_relative 'simplecov_config'
 require 'bundler/setup'
 require 'sqs_simplify'
+
 require 'examples/consumer_example'
 require 'examples/scheduler_example'
+require 'examples/job_example'
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure

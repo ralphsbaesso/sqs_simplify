@@ -36,11 +36,13 @@ RSpec.describe SqsSimplify::Job do
           it do
             scheduler = JobExample.scheduler
             expect(JobExample.queue_name).to eq(scheduler.queue_name)
-            expect(scheduler.queue_name).to eq('production_my_job')
+            expect(scheduler.queue_name).to eq('my_job')
+            expect(scheduler.queue_full_name).to eq('production_my_job')
 
             consumer = JobExample.consumer
             expect(JobExample.queue_name).to eq(consumer.queue_name)
-            expect(consumer.queue_name).to eq('production_my_job')
+            expect(consumer.queue_name).to eq('my_job')
+            expect(consumer.queue_full_name).to eq('production_my_job')
           end
         end
       end
@@ -55,7 +57,11 @@ RSpec.describe SqsSimplify::Job do
     end
 
     context 'with FakerClient' do
-      before { SqsSimplify.configure.faker = true }
+      before do
+        SqsSimplify.configure.faker = true
+        clear_variables(JobExample, :@scheduler, :@consumer)
+      end
+
       after { SqsSimplify.configure.faker = nil }
 
       context 'one cycle' do

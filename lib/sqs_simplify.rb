@@ -20,6 +20,9 @@ require 'sqs_simplify/version'
 
 require 'sqs_simplify/worker'
 require 'sqs_simplify/job'
+require 'sqs_simplify/dead_queue'
+
+require 'sqs_simplify/errors/non_existent_queue'
 
 module SqsSimplify
   include SqsSimplify::ExecutionHook

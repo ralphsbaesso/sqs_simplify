@@ -10,9 +10,6 @@ module SqsSimplify
     MESSAGE_RETENTION_PERIOD = 14 * 24 * 60 * 60
     DELAY_SECONDS = 0
 
-    VISIBILITY_TIMEOUT_DEAD = 60 * 60
-    MESSAGE_RETENTION_PERIOD_DEAD = 14 * 24 * 60 * 60
-
     protected
 
     def dump_message(value)
@@ -28,26 +25,22 @@ module SqsSimplify
         settings[key.to_sym] = value
       end
 
-      def define_visibility_timeout(value)
-        @visibility_timeout = value
-      end
-
-      def define_message_retention_period(value)
-        @message_retention_period = value
-      end
-
-      def define_delay_seconds(value)
-        @delay_seconds = value
-      end
-
       def queue_name
-        return @queue_name if @queue_name
+        @queue_name ||= (settings[:queue_name] || to_underscore(name)).to_s
+      end
 
-        @queue_name = [
-          SqsSimplify.settings.queue_prefix,
-          settings[:queue_name] || to_underscore(name),
-          SqsSimplify.settings.queue_suffix
-        ].compact.join('_')
+      def queue_full_name
+        @queue_full_name ||= build_queue_full_name
+      end
+
+      def queue_url
+        @queue_url ||= client.get_queue_url(queue_name: queue_full_name).queue_url
+      rescue Aws::SQS::Errors::NonExistentQueue
+        raise SqsSimplify::Errors::NonExistentQueue, queue_full_name
+      end
+
+      def dead_queue
+        @dead_queue ||= build_dead_queue_class
       end
 
       def count_messages
@@ -64,7 +57,7 @@ module SqsSimplify
       end
 
       def queue_arn(load: false)
-        queue_info(load: load)['queueArn']
+        queue_info(load: load)['QueueArn']
       end
 
       def approximate_number_of_messages_not_visible(load: false)
@@ -85,6 +78,10 @@ module SqsSimplify
 
       def message_retention_period(load: false)
         queue_info(load: load)['MessageRetentionPeriod'].to_i
+      end
+
+      def max_receive_count
+        @max_receive_count ||= build_max_receive_count
       end
 
       def dump_message(value)
@@ -120,62 +117,18 @@ module SqsSimplify
 
       def create_queue_and_dead_queue
         create_queue
-        create_dead_letter_queue
+        dead_queue.create_queue
+        true
       end
 
       def create_queue
-        return if find_queue_by_name(queue_name)
-
-        visibility_timeout = @visibility_timeout || VISIBILITY_TIMEOUT # Should be between 0 seconds and 12 hours.
-        message_retention_period = @message_retention_period || MESSAGE_RETENTION_PERIOD # retention, Should be between 1 minute and 14 days.
-        delay_seconds = @delay_seconds || DELAY_SECONDS
+        queue = find_queue_by_name(queue_full_name)
+        return queue if queue
 
         client.create_queue(
-          queue_name: queue_name,
-          attributes: {
-            VisibilityTimeout: visibility_timeout.to_s,
-            MessageRetentionPeriod: message_retention_period.to_s,
-            DelaySeconds: delay_seconds.to_s
-          }
+          queue_name: queue_full_name,
+          attributes: default_attributes
         )
-      end
-
-      def create_dead_letter_queue
-        dead_queue = find_queue_by_name("#{queue_name}_dead")
-        return if dead_queue
-
-        dead_queue = client.create_queue(
-          queue_name: "#{queue_name}_dead",
-          attributes: {
-            VisibilityTimeout: (60 * 60).to_s, # Should be between 0 seconds and 12 hours.
-            MessageRetentionPeriod: (14 * 24 * 60 * 60).to_s, # retention, Should be between 1 minute and 14 days.
-            DelaySeconds: '0' # delay
-          }
-        )
-
-        dead_queue_url = dead_queue.queue_url
-        dead_letter_queue_arn =
-          client.get_queue_attributes(
-            queue_url: dead_queue_url,
-            attribute_names: ['QueueArn']
-          ).attributes['QueueArn']
-
-        begin
-          # Use a redrive policy to specify the dead letter queue and its behavior.
-          redrive_policy = {
-            'maxReceiveCount' => '1', # After the queue receives the same message 1 times, send that message to the dead letter queue.
-            'deadLetterTargetArn' => dead_letter_queue_arn
-          }.to_json
-
-          client.set_queue_attributes(
-            queue_url: queue_url,
-            attributes: {
-              'RedrivePolicy' => redrive_policy
-            }
-          )
-        rescue Aws::SQS::Errors::NonExistentQueue
-          raise "A queue named '#{queue_name}' does not exist."
-        end
       end
 
       def find_queue_by_name(name)
@@ -184,53 +137,54 @@ module SqsSimplify
         nil
       end
 
-      def queue_url
-        @queue_url ||= client.get_queue_url(queue_name: queue_name).queue_url
-      end
-
-      def dead_queue_url
-        @dead_queue_url ||= client.get_queue_url(queue_name: "#{queue_name}_dead").queue_url
-      end
-
-      def dead_queue_to_queue(amount = nil, all: false)
-        if all
-          dead_queue_to_queue_loop(Float::INFINITY)
-        else
-          dead_queue_to_queue_loop(amount.to_i)
-        end
+      def update_attributes(**attributes)
+        attributes = attributes.map { |att| att.map(&:to_s) }.to_h
+        client.set_queue_attributes(
+          queue_url: main_queue.queue_url,
+          attributes: attributes
+        )
+        true
       end
 
       private
 
-      def dead_queue_to_queue_loop(amount)
-        return 0 unless amount.positive?
-
-        count = 0
-        loop do
-          messages = dead_queue_messages([amount, 2].min)
-          return count if messages.count.zero? || count >= amount
-
-          count += messages.count
-          messages.each { |message| client.send_message(queue_url: queue_url, message_body: message[:body]) }
-          delete_dead_messages(messages)
-        end
+      def build_queue_full_name
+        [
+          SqsSimplify.settings.queue_prefix,
+          queue_name,
+          SqsSimplify.settings.queue_suffix
+        ].compact.join('_')
       end
 
-      def dead_queue_messages(amount)
-        client.receive_message(
-          queue_url: dead_queue_url,
-          message_attribute_names: ['All'],
-          max_number_of_messages: amount,
-          wait_time_seconds: 0
-        ).messages
+      def build_dead_queue_class
+        class_name = "#{name}::DeadQueue"
+
+        class_eval <<~M, __FILE__, __LINE__ + 1
+          class #{class_name} < SqsSimplify::DeadQueue; end
+        M
+
+        dead_queue_class = const_get class_name
+        dead_queue_class.set :queue_name, "#{queue_name}_dead"
+        dead_queue_class
       end
 
-      def delete_dead_messages(messages)
-        client.delete_message_batch(
-          queue_url: dead_queue_url,
-          entries: messages.map { |m| { id: m[:message_id], receipt_handle: m[:receipt_handle] } }
-        )
-        true
+      def build_max_receive_count
+        value = settings[:max_receive_count].to_i
+        value.positive? ? value : 1
+      rescue StandardError
+        1
+      end
+
+      def default_attributes
+        visibility_timeout = settings[:visibility_timeout] || self::VISIBILITY_TIMEOUT # Should be between 0 seconds and 12 hours.
+        message_retention_period = settings[:message_retention_period] || self::MESSAGE_RETENTION_PERIOD # retention, Should be between 1 minute and 14 days.
+        delay_seconds = settings[:delay_seconds] || self::DELAY_SECONDS
+
+        {
+          VisibilityTimeout: visibility_timeout.to_s,
+          MessageRetentionPeriod: message_retention_period.to_s,
+          DelaySeconds: delay_seconds.to_s
+        }
       end
 
       def to_underscore(value)

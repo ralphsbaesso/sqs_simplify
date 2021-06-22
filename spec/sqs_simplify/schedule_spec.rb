@@ -43,9 +43,11 @@ RSpec.describe SqsSimplify::Scheduler do
 
         it do
           expect(SchedulerExample2.queue_url).to_not be_nil
-          expect(SchedulerExample2.queue_name).to eq('environment_queue_name')
+          expect(SchedulerExample2.queue_name).to eq('queue_name')
+          expect(SchedulerExample2.queue_full_name).to eq('environment_queue_name')
           expect(SchedulerExample2.inner.queue_url).to_not be_nil
-          expect(SchedulerExample2.inner.queue_name).to eq('environment_input')
+          expect(SchedulerExample2.inner.queue_name).to eq('input')
+          expect(SchedulerExample2.inner.queue_full_name).to eq('environment_input')
         end
       end
 
@@ -55,9 +57,11 @@ RSpec.describe SqsSimplify::Scheduler do
 
         it do
           expect(SchedulerExample3.queue_url).to_not be_nil
-          expect(SchedulerExample3.queue_name).to eq('queue_name_final')
+          expect(SchedulerExample3.queue_name).to eq('queue_name')
+          expect(SchedulerExample3.queue_full_name).to eq('queue_name_final')
           expect(SchedulerExample3.inner.queue_url).to_not be_nil
-          expect(SchedulerExample3.inner.queue_name).to eq('input_final')
+          expect(SchedulerExample3.inner.queue_name).to eq('input')
+          expect(SchedulerExample3.inner.queue_full_name).to eq('input_final')
         end
       end
 
@@ -70,8 +74,10 @@ RSpec.describe SqsSimplify::Scheduler do
 
           require_relative '../examples/scheduler_other_example'
 
-          expect(SchedulerExample4.queue_name).to include('aaa_', '_bbb')
-          expect(SchedulerExample4.output.queue_name).to include('aaa_', '_bbb')
+          expect(SchedulerExample4.queue_name).to eq('queue1')
+          expect(SchedulerExample4.queue_full_name).to include('aaa_', '_bbb')
+          expect(SchedulerExample4.output.queue_name).to eq('queue2')
+          expect(SchedulerExample4.output.queue_full_name).to include('aaa_', '_bbb')
         end
       end
     end

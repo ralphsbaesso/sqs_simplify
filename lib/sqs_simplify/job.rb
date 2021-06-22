@@ -90,7 +90,6 @@ module SqsSimplify
       end
 
       def build_consumer
-        current_class = self
         klass = Class.new(SqsSimplify::Consumer) do
           def perform
             self.class.father_job.send :execute, message

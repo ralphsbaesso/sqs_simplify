@@ -25,7 +25,7 @@ RSpec.describe SqsSimplify::FakerClient do
       messages = ConsumerExample.send :fetch_messages
       expect(messages.count).to eq(1)
 
-      ConsumerExample.send :delete_message, messages.first
+      ConsumerExample.send :delete_sqs_message, messages.first
       expect(SchedulerExample.count_messages).to eq(0)
     end
 
@@ -39,14 +39,14 @@ RSpec.describe SqsSimplify::FakerClient do
 
       messages = ConsumerExample.send :fetch_messages, 9
       messages.each do |message|
-        ConsumerExample.send :delete_message, message
+        ConsumerExample.send :delete_sqs_message, message
       end
 
       expect(SchedulerExample.count_messages).to eq(6)
 
       messages = ConsumerExample.send :fetch_messages, 4
       messages.each do |message|
-        ConsumerExample.send :delete_message, message
+        ConsumerExample.send :delete_sqs_message, message
       end
 
       expect(SchedulerExample.count_messages).to eq(2)

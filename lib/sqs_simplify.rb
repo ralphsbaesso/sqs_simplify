@@ -54,6 +54,10 @@ module SqsSimplify
       @jobs ||= {}
     end
 
+    def message_not_deleted(&block)
+      hooks[:message_not_deleted] = block
+    end
+
     def logger
       return @logger if @logger
 

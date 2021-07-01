@@ -140,7 +140,7 @@ module SqsSimplify
       def update_attributes(**attributes)
         attributes = attributes.map { |att| att.map(&:to_s) }.to_h
         client.set_queue_attributes(
-          queue_url: main_queue.queue_url,
+          queue_url: queue_url,
           attributes: attributes
         )
         true
@@ -206,7 +206,7 @@ module SqsSimplify
         if sub < SqsSimplify::Consumer
           SqsSimplify.consumers[name.to_sym] = sub
         elsif sub < SqsSimplify::Job
-          SqsSimplify.jobs[name.to_sym] = sub.consumer
+          SqsSimplify.jobs[name.to_sym] = sub
         elsif sub < SqsSimplify::Scheduler
           SqsSimplify.schedulers[name.to_sym] = sub
         end

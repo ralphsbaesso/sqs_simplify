@@ -5,6 +5,10 @@ module SqsSimplify
     private_class_method :new
 
     class << self
+      def consume_messages
+        consumer.consume_messages
+      end
+
       def scheduler
         @scheduler ||= build_scheduler
       end
@@ -18,7 +22,7 @@ module SqsSimplify
       def schedule(method, *parameters)
         message = { 'method' => method, 'parameters' => dump(parameters) }
         if scheduler?
-          scheduler.send_message(message)
+          scheduler.send :send_message, message
         else
           execute(message)
           FakeScheduler.new
@@ -85,6 +89,7 @@ module SqsSimplify
 
       def build_scheduler
         klass = Class.new(SqsSimplify::Scheduler)
+        klass.private_class_method :send_message
         transfer_settings(klass)
         klass
       end
@@ -100,15 +105,10 @@ module SqsSimplify
       end
 
       def transfer_settings(sub)
+        sub.instance_variable_set :@settings, settings
         current_job = self
-        %i[queue_name].each do |key|
-          sub.define_singleton_method key do
-            current_job.send(key)
-          end
-
-          sub.define_singleton_method :father_job do
-            current_job
-          end
+        sub.define_singleton_method :father_job do
+          current_job
         end
       end
 

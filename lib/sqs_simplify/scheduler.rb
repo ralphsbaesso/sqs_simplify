@@ -3,7 +3,8 @@
 module SqsSimplify
   class Scheduler < SqsSimplify::Base
     include SqsSimplify::ExecutionHook
-    attr_accessor :message, :attributes
+    private_class_method :new
+    attr_accessor :message
 
     def initialize(message)
       @message = message
@@ -27,23 +28,18 @@ module SqsSimplify
       self.class.queue_url
     end
 
-    def send_message(**options)
-      sqs_message = Message.new queue_url: queue_url,
-                                body: dump_message(message),
-                                **options
-
+    def send_message(delay_seconds: 0)
+      sqs_message = Message.new queue_url: queue_url, body: dump_message(message), delay_seconds: delay_seconds
       self.class.call_hook :before_each, sqs_message
       client.send_message(sqs_message.to_send).message_id
     rescue Aws::SQS::Errors::NonExistentQueue => e
-      self.class.call_hook :resolver_exception, e, queueurl: queue_url, sqs_message: sqs_message
+      self.class.call_hook :resolver_exception, e, sqs_message
       raise e
     rescue StandardError => e
-      self.class.call_hook :resolver_exception, e, sqs_message: sqs_message
+      self.class.call_hook :resolver_exception, e, sqs_message
     ensure
       self.class.call_hook :after_each, sqs_message
     end
-
-    private_class_method :new
 
     class << self
       def send_message(message)

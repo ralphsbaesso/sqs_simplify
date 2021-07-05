@@ -4,31 +4,21 @@ module SqsSimplify
   class Scheduler < SqsSimplify::Base
     include SqsSimplify::ExecutionHook
     private_class_method :new
-    attr_accessor :message
 
-    def initialize(message)
+    def initialize(message, delay_seconds)
       @message = message
-    end
-
-    def now
-      send_message
-    end
-
-    def later(seconds)
-      raise 'parameter must be a Integer' unless seconds.is_a? Integer
-      raise 'parameter must be between 1 to 960 seconds' unless seconds.positive? &&
-                                                                seconds < 961
-
-      send_message(delay_seconds: seconds)
+      @delay_seconds = delay_seconds
     end
 
     private
+
+    attr_accessor :message, :delay_seconds
 
     def queue_url
       self.class.queue_url
     end
 
-    def send_message(delay_seconds: 0)
+    def send_message
       sqs_message = Message.new queue_url: queue_url, body: dump_message(message), delay_seconds: delay_seconds
       self.class.call_hook :before_each, sqs_message
       client.send_message(sqs_message.to_send).message_id
@@ -42,8 +32,11 @@ module SqsSimplify
     end
 
     class << self
-      def send_message(message)
-        new(message)
+      def send_message(message:, after: nil)
+        after = after.nil? ? 0 : after.to_i
+        raise 'parameter must be between 0 to 960 seconds' unless after >= 0 && after < 961
+
+        new(message, after).send :send_message
       end
 
       def map_queue(nickname, &block)

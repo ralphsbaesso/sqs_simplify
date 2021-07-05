@@ -20,11 +20,7 @@ RSpec.describe SqsSimplify::Scheduler do
     context '.send_message' do
       it 'send message and perform now' do
         allow(SchedulerExample).to receive(:queue_url).and_return('http://amozon.com')
-        message = { a: 'a' }
-        perform = SchedulerExample.send_message message
-
-        expect(perform.class).to eq(SchedulerExample)
-        message_id = perform.now
+        message_id = SchedulerExample.send_message message: { a: 'a' }
         expect(message_id).to be_truthy
       end
     end
@@ -91,24 +87,27 @@ RSpec.describe SqsSimplify::Scheduler do
 
       it 'must mark error_occurred as true' do
         allow_any_instance_of(Aws::SQS::Client).to receive(:send_message).and_raise('One error')
-        SchedulerExample.send_message({ payload: 123 }).now
+        SchedulerExample.send_message(message: { payload: 123 })
         expect(@error_occurred).to be_truthy
       end
     end
 
     it 'send message and perform later' do
       allow(SchedulerExample).to receive(:queue_url).and_return('http://amozon.com')
-
       message = { a: 'a' }
-      perform = SchedulerExample.send_message message
 
-      expect(perform).to be_a(SchedulerExample)
-      expect { perform.later }.to raise_error(ArgumentError)
-      expect { perform.later('90') }.to raise_error('parameter must be a Integer')
-      expect { perform.later(0) }.to raise_error('parameter must be between 1 to 960 seconds')
-      expect { perform.later(961) }.to raise_error('parameter must be between 1 to 960 seconds')
-      message_id = perform.later 960
-      expect(message_id).to be_truthy
+      expect { SchedulerExample.send_message }.to raise_error(ArgumentError)
+      # expect { SchedulerExample.send_message(message, after: '90') }.to raise_error('parameter must be a Integer')
+      expect do
+        SchedulerExample.send_message(message: message,
+                                      after: -1)
+      end.to raise_error('parameter must be between 0 to 960 seconds')
+      expect do
+        SchedulerExample.send_message(message: message,
+                                      after: 961)
+      end.to raise_error('parameter must be between 0 to 960 seconds')
+      expect(SchedulerExample.send_message(message: message, after: rand(0..960))).to be_a(String)
+      expect(SchedulerExample.send_message(message: message, after: '90')).to be_a(String)
     end
   end
 end

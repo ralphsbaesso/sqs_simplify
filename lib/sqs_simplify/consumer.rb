@@ -3,6 +3,8 @@
 module SqsSimplify
   class Consumer < SqsSimplify::Base
     include SqsSimplify::ExecutionHook
+
+    private_class_method :new
     attr_accessor :delete_sqs_message
     attr_reader :visibility_timeout, :errors
 
@@ -10,20 +12,20 @@ module SqsSimplify
       @sqs_message = sqs_message
       @message = load_message(sqs_message)
       @visibility_timeout = visibility_timeout
-      @delete_sqs_message = visibility_timeout.positive?
+      self.delete_sqs_message = visibility_timeout.positive?
     end
 
     def perform
       raise 'Must implement this method'
     end
 
+    def delete_sqs_message?
+      delete_sqs_message
+    end
+
     protected
 
     attr_reader :message, :sqs_message
-
-    def delete_sqs_message?
-      @delete_sqs_message
-    end
 
     class << self
       def consume_messages(amount = 10)

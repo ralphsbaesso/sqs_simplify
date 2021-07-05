@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'zlib'
+
 module SqsSimplify
   class Job < SqsSimplify::Base
     private_class_method :new
@@ -21,16 +23,7 @@ module SqsSimplify
 
       def schedule(method, *parameters)
         message = { 'method' => method, 'parameters' => dump(parameters) }
-        if scheduler?
-          scheduler.send :send_message, message
-        else
-          execute(message)
-          FakeScheduler.new
-        end
-      end
-
-      def scheduler?
-        settings[:scheduler]
+        ProxyScheduler.new(self, message)
       end
 
       def execute(args)
@@ -45,6 +38,8 @@ module SqsSimplify
       end
 
       def method_added(method)
+        return if private_instance_methods.include? method
+
         origin_file, definition_line = instance_method(method).source_location
         method_signature = IO.readlines(origin_file)[definition_line.pred].gsub("\n", '').strip
         parameters = build_parameters(method_signature)
@@ -120,15 +115,31 @@ module SqsSimplify
         Marshal.load(Zlib::Inflate.inflate(Base64.decode64(value)))
       end
     end
-  end
 
-  class FakeScheduler
-    def now
-      :executed
-    end
+    class ProxyScheduler
+      def initialize(job, message)
+        @message = message
+        @job = job
+      end
 
-    def later(_value = nil)
-      :executed
+      def later(seconds = nil)
+        if scheduler?
+          @job.scheduler.send(:send_message, message: @message, after: seconds)
+        else
+          now
+        end
+      end
+
+      def now
+        @job.send :execute, @message
+        :executed
+      end
+
+      private
+
+      def scheduler?
+        @job.settings[:scheduler]
+      end
     end
   end
 end

@@ -66,7 +66,7 @@ RSpec.describe SqsSimplify::Job do
 
       context 'one cycle' do
         it do
-          JobExample.method_one(:value1).now
+          JobExample.method_one(:value1).later
           expect(JobExample.count_messages).to eq(1)
 
           consumer = JobExample.consumer
@@ -80,8 +80,10 @@ RSpec.describe SqsSimplify::Job do
       context '.schedule' do
         it 'must to schedule' do
           value = :test
+          expect(JobExample.method_one(value).now).to eq(:executed)
+
           expect(JobExample.settings[:scheduler]).to be_truthy
-          message_id = JobExample.method_one(value).now
+          message_id = JobExample.method_one(value).later
           expect(message_id.to_i).to be > 0
 
           JobExample.set :scheduler, false

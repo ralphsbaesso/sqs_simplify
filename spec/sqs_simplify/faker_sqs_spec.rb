@@ -16,7 +16,7 @@ RSpec.describe SqsSimplify::FakerClient do
   context 'send e receive message' do
     it 'send one message' do
       message = { id: 1, text: 'text test' }
-      response = SchedulerExample.send_message(message).now
+      response = SchedulerExample.send_message(message: message)
       expect(response).not_to be_nil
 
       expect(SqsSimplify::FakerClient.pool.count).to eq(1)
@@ -32,7 +32,7 @@ RSpec.describe SqsSimplify::FakerClient do
     it 'send multiples messages' do
       15.times do |index|
         message = { id: index, text: 'text' }
-        SchedulerExample.send_message(message).now
+        SchedulerExample.send_message(message: message)
       end
 
       expect(SchedulerExample.count_messages).to eq(15)

@@ -13,10 +13,11 @@ RSpec.describe SqsSimplify::Consumer do
         messages = ConsumerExample.send :fetch_messages
         expect(messages.count).to eq(5)
 
-        expect { ConsumerExample.new(messages.first, 1).perform }
+        consumer = ConsumerExample.send(:new, messages.first, 1)
+        expect { consumer.perform }
           .to raise_error('Must implement this method')
 
-        response = ConsumerExample.send :delete_sqs_message, messages.first
+        response = ConsumerExample.send(:delete_sqs_message, messages.first)
         expect(response).to eq(true)
       end
     end

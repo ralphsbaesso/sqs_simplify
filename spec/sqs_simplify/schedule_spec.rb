@@ -62,6 +62,11 @@ RSpec.describe SqsSimplify::Scheduler do
       end
 
       context 'prefix and suffix configured in SqsSiplify' do
+        after do
+          SqsSimplify.configure.queue_suffix = nil
+          SqsSimplify.configure.queue_prefix = nil
+        end
+
         it do
           SqsSimplify.configure do |config|
             config.queue_prefix = 'aaa'

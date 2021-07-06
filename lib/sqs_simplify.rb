@@ -43,15 +43,15 @@ module SqsSimplify
     end
 
     def consumers
-      @consumers ||= {}
+      @consumers ||= []
     end
 
     def schedulers
-      @schedulers ||= {}
+      @schedulers ||= []
     end
 
     def jobs
-      @jobs ||= {}
+      @jobs ||= []
     end
 
     def message_not_deleted(&block)

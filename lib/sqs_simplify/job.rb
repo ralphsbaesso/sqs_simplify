@@ -100,6 +100,7 @@ module SqsSimplify
       end
 
       def transfer_settings(sub)
+        sub.instance_variable_set :@queue_name, queue_name
         sub.instance_variable_set :@settings, settings
         current_job = self
         sub.define_singleton_method :father_job do

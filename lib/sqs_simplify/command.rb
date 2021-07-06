@@ -15,36 +15,46 @@ module SqsSimplify
 
       @worker_count = 1
       opts = OptionParser.new do |opt|
-        opt.on('-h', '--help', 'Show this message') do
+        opt.on('-h', '--help', 'Show help') do
           puts opt
           exit 1
         end
 
-        opt.on('-e', '--environment=environment', 'Environment') do |v|
-          @options[:environment] = v
-        end
         opt.on('-n', '--number_of_workers=workers', 'Number of unique workers to spawn') do |worker_count|
-          @worker_count = begin
-            worker_count.to_i
-          rescue StandardError
-            1
-          end
+          build_work_count(worker_count)
         end
+
+        opt.on('-e', '--environment=environment', 'Environment') { |env| @options[:environment] = env }
+        opt.on('--queues=workers', 'queues that will be consumed') { |queues| @queues = queues.split(',') }
+        opt.on('--priority', 'with priority in the queues') { |priority| @priority = priority }
+
         opt.on('--pid-dir=DIR', 'Specifies an alternate directory in which to store the process ids.') do |dir|
           @options[:pid_dir] = dir
         end
+
         opt.on('--log-dir=DIR', 'Specifies an alternate directory in which to store the delayed_job log.') do |dir|
           @options[:log_dir] = dir
         end
       end
+
       @args = opts.parse!(args)
     end
 
     def daemonize
+      self.running_process = true
       dir = @options[:pid_dir]
       FileUtils.mkdir_p(dir) unless File.exist?(dir)
       before_fork
       run_process
+    end
+
+    private
+
+    attr_accessor :running_process
+
+    def build_work_count(number)
+      worker_count = number.to_i
+      @worker_count = worker_count.positive? ? worker_count : 1
     end
 
     def run_process
@@ -61,22 +71,38 @@ module SqsSimplify
     def run(process_name)
       Daemons.run_proc(process_name, dir: @options[:pid_dir], dir_mode: :normal, ARGV: @args) do
         after_fork
-        running = true
-        trap('TERM') { running = false }
-        trap('SIGINT') { running = false }
+        time = 0
 
-        while running
-          amount_process = SqsSimplify::Worker.work
-          sleep 10 if amount_process.zero?
+        while running_process
+          if time.zero?
+            amount_process = build_worker.perform
+            time = calculate_sleep(amount_process)
+          else
+            sleep 1
+            time -= 1
+          end
         end
       end
+    end
+
+    def build_worker
+      SqsSimplify::Worker.new(queues: @queues, priority: @priority) do
+        continues_the_process?
+      end
+    end
+
+    def calculate_sleep(amount)
+      amount.zero? ? 10 : 0
+    end
+
+    def continues_the_process?
+      trap('TERM') { self.running_process = false }
+      trap('SIGINT') { self.running_process = false }
     end
 
     def root
       @root ||= SqsSimplify.settings.root
     end
-
-    private
 
     def after_fork
       @files_to_reopen.each do |file|

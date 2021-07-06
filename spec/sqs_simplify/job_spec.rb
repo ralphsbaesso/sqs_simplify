@@ -8,7 +8,7 @@ RSpec.describe SqsSimplify::Job do
   end
 
   it 'job (<name_job>::Consumer>) must be included in the variable "jobs" of SqsSimplify' do
-    expect(SqsSimplify.jobs.keys).to include(:job_example)
+    expect(SqsSimplify.jobs.map(&:queue_name)).to include('my_job', 'job_example1')
   end
 
   context 'class methods' do

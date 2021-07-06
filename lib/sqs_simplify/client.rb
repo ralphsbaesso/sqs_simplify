@@ -10,21 +10,20 @@ module SqsSimplify
 
     module ClassMethods
       def client
-        return @client if @client
+        @client ||= build_client
+      end
 
+      private
+
+      def build_client
         args = {
-          access_key_id: SqsSimplify.settings.access_key_id,
-          secret_access_key: SqsSimplify.settings.secret_access_key,
-          region: SqsSimplify.settings.region,
+          access_key_id: settings[:access_key_id] || SqsSimplify.settings.access_key_id,
+          secret_access_key: settings[:secret_access_key] || SqsSimplify.settings.secret_access_key,
+          region: settings[:region] || SqsSimplify.settings.region,
           stub_responses: SqsSimplify.settings.stub_responses
         }.select { |_k, v| v }
 
-        @client =
-          if SqsSimplify.settings.faker
-            SqsSimplify::FakerClient.new
-          else
-            Aws::SQS::Client.new(args)
-          end
+        SqsSimplify.settings.faker ? SqsSimplify::FakerClient.new : Aws::SQS::Client.new(args)
       end
     end
 

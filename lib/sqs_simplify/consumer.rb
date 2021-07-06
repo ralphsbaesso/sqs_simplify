@@ -76,7 +76,7 @@ module SqsSimplify
       def choose_process(messages, start_time)
         parallel_type, amount_processes = build_parallel_parameter(messages)
 
-        logger.info "Started loop with: { class_name: #{name}, #{parallel_type}: #{amount_processes}, messages: #{messages.count} }"
+        logger.info "Started loop with: { queue_name: #{queue_name}, #{parallel_type}: #{amount_processes}, messages: #{messages.count} }"
         if amount_processes == 1
           messages.each { |sqs_message| consume_sqs_message(sqs_message, start_time) }
         else

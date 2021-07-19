@@ -20,10 +20,10 @@ module SqsSimplify
         # Use a redrive policy to specify the dead letter queue and its behavior.
         redrive_policy = {
           'maxReceiveCount' => main_queue.max_receive_count.to_s, # After the queue receives the same message 1 times, send that message to the dead letter queue.
-          'deadLetterTargetArn' => main_queue.queue_arn(load: true)
+          'deadLetterTargetArn' => queue_arn
         }.to_json
 
-        update_attributes(RedrivePolicy: redrive_policy)
+        main_queue.update_attributes(RedrivePolicy: redrive_policy)
         dead_queue
       end
 

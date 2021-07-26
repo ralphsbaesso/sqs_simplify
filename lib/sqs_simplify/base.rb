@@ -157,7 +157,7 @@ module SqsSimplify
       end
 
       def build_dead_queue_class
-        class_name = "#{name}::DeadQueue"
+        class_name = "::#{name}::DeadQueue"
 
         class_eval <<~M, __FILE__, __LINE__ + 1
           class #{class_name} < SqsSimplify::DeadQueue; end

@@ -8,7 +8,7 @@ RSpec.describe SqsSimplify::Job do
   end
 
   it 'job (<name_job>::Consumer>) must be included in the variable "jobs" of SqsSimplify' do
-    expect(SqsSimplify.jobs.map(&:queue_name)).to include('my_job', 'job_example1')
+    expect(SqsSimplify.consumers.map(&:queue_name)).to include('my_job', 'job_example1')
   end
 
   context 'class methods' do
@@ -56,10 +56,36 @@ RSpec.describe SqsSimplify::Job do
       end
     end
 
+    context '._reserved_method_name' do
+      it do
+        methods = %w[consume_messages scheduler consumer namespace]
+        current_methods = SqsSimplify::Job.send :_reserved_method_name
+        expect(current_methods).to eq(methods)
+      end
+
+      it 'should raise an exception to reserved method name' do
+        current_methods = SqsSimplify::Job.send :_reserved_method_name
+        current_methods.each do |method|
+          expect do
+            SqsSimplify::Job.send(:_check_reserved_method_name!, method)
+          end.to raise_error(SqsSimplify::Errors::ReservedMethodName)
+        end
+      end
+    end
+
+    context '.client' do
+      it 'must share the same client in subclasses' do
+        client = JobExample1.client
+        expect(client).to be(JobExample1.inner.client)
+        expect(client).to be(JobExample1.scheduler.client)
+        expect(client).to be(JobExample1.consumer.client)
+      end
+    end
+
     context 'with FakerClient' do
       before do
         SqsSimplify.configure.faker = true
-        clear_variables(JobExample, :@scheduler, :@consumer)
+        clear_variables(JobExample, :@scheduler, :@consumer, :@client)
       end
 
       after { SqsSimplify.configure.faker = nil }

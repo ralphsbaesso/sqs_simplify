@@ -27,7 +27,7 @@ module SqsSimplify
     end
 
     def build_sqs_consumers
-      consumers = SqsSimplify.consumers + SqsSimplify.jobs
+      consumers = SqsSimplify.consumers
 
       if queues
         queues.map do |queue|

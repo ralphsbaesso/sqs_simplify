@@ -32,4 +32,6 @@ class JobExample < SqsSimplify::Job
 end
 
 class JobExample1 < SqsSimplify::Job
+  namespace :inner do
+  end
 end

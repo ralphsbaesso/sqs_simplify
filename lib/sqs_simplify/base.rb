@@ -197,12 +197,11 @@ module SqsSimplify
 
       def inherited(sub)
         super
+        return if sub.name.nil?
         return if %w[SqsSimplify::Job SqsSimplify::Consumer SqsSimplify::Scheduler].include? sub.name
 
-        if sub < SqsSimplify::Consumer
+        if sub < SqsSimplify::Consumer || sub < SqsSimplify::Job
           SqsSimplify.consumers << sub
-        elsif sub < SqsSimplify::Job
-          SqsSimplify.jobs << sub
         elsif sub < SqsSimplify::Scheduler
           SqsSimplify.schedulers << sub
         end

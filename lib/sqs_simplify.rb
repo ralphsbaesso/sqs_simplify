@@ -23,6 +23,7 @@ require 'sqs_simplify/job'
 require 'sqs_simplify/dead_queue'
 
 require 'sqs_simplify/errors/non_existent_queue'
+require 'sqs_simplify/errors/reserved_method_name'
 
 module SqsSimplify
   include SqsSimplify::ExecutionHook
@@ -48,10 +49,6 @@ module SqsSimplify
 
     def schedulers
       @schedulers ||= []
-    end
-
-    def jobs
-      @jobs ||= []
     end
 
     def message_not_deleted(&block)

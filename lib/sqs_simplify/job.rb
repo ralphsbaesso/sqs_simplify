@@ -12,25 +12,25 @@ module SqsSimplify
       end
 
       def scheduler
-        @scheduler ||= build_scheduler
+        @scheduler ||= _build_scheduler
       end
 
       def consumer
-        @consumer ||= build_consumer
+        @consumer ||= _build_consumer
+      end
+
+      def namespace(namespace, &block)
+        raise 'must pass one block' unless block
+
+        klass = Class.new(SqsSimplify::Job)
+        _transfer_settings(klass)
+
+        klass.define_singleton_method(:inner) { namespace.to_s }
+        klass.class_eval(&block)
+        define_singleton_method(namespace) { klass }
       end
 
       private
-
-      def schedule(method, *parameters)
-        message = { 'method' => method, 'parameters' => dump(parameters) }
-        ProxyScheduler.new(self, message)
-      end
-
-      def execute(args)
-        method = args['method']
-        parameters = load(args['parameters'])
-        new.send method, *parameters
-      end
 
       def inherited(sub)
         super
@@ -38,37 +38,59 @@ module SqsSimplify
       end
 
       def method_added(method)
+        super
         return if private_instance_methods.include? method
 
+        _add_method method
+      end
+
+      def _schedule(method, *parameters)
+        message = { 'method' => method, 'parameters' => _dump(parameters) }
+        message['namespace'] = inner if respond_to? :inner
+        ProxyScheduler.new(self, message)
+      end
+
+      def _execute(args)
+        namespace = args['namespace']
+        method = args['method']
+        parameters = _load(args['parameters'])
+
+        source = namespace ? send(namespace) : self
+        instance = source.send :new
+        instance.send method, *parameters
+      end
+
+      def _add_method(method)
+        _check_reserved_method_name!(method)
         origin_file, definition_line = instance_method(method).source_location
         method_signature = IO.readlines(origin_file)[definition_line.pred].gsub("\n", '').strip
-        parameters = build_parameters(method_signature)
+        parameters = _build_parameters(method_signature)
 
         class_eval <<~M, __FILE__, __LINE__ + 1
           class << self
             #{method_signature}
-              schedule :#{method} #{parameters}
+              _schedule :#{method} #{parameters}
             end
           end
         M
       end
 
-      def build_parameters(str)
-        keys = build_keys(str)
+      def _build_parameters(str)
+        keys = _build_keys(str)
         return keys if keys == ''
 
-        parameters = keys_to_parameters(keys)
+        parameters = _keys_to_parameters(keys)
         ", #{parameters.join(', ')}"
       end
 
-      def build_keys(str)
+      def _build_keys(str)
         index = str.index('(')
         return '' if index.nil?
 
         str[index + 1..-2].split(',')
       end
 
-      def keys_to_parameters(keys)
+      def _keys_to_parameters(keys)
         keys.map do |key|
           if key.include?('=')
             str = key.split('=')[0].strip
@@ -82,38 +104,46 @@ module SqsSimplify
         end
       end
 
-      def build_scheduler
+      def _build_scheduler
         klass = Class.new(SqsSimplify::Scheduler)
         klass.private_class_method :send_message
-        transfer_settings(klass)
+        _transfer_settings(klass)
         klass
       end
 
-      def build_consumer
+      def _build_consumer
         klass = Class.new(SqsSimplify::Consumer) do
           def perform
-            self.class.father_job.send :execute, message
+            self.class.father_job.send :_execute, message
           end
         end
-        transfer_settings(klass)
+        _transfer_settings(klass)
         klass
       end
 
-      def transfer_settings(sub)
+      def _transfer_settings(sub)
         sub.instance_variable_set :@queue_name, queue_name
         sub.instance_variable_set :@settings, settings
+        sub.instance_variable_set :@client, client
+
         current_job = self
-        sub.define_singleton_method :father_job do
-          current_job
-        end
+        sub.define_singleton_method(:father_job) { current_job }
       end
 
-      def dump(value)
+      def _dump(value)
         Base64.encode64(Zlib::Deflate.deflate(Marshal.dump(value)))
       end
 
-      def load(value)
+      def _load(value)
         Marshal.load(Zlib::Inflate.inflate(Base64.decode64(value)))
+      end
+
+      def _reserved_method_name
+        %w[consume_messages scheduler consumer namespace]
+      end
+
+      def _check_reserved_method_name!(method)
+        raise SqsSimplify::Errors::ReservedMethodName, method if _reserved_method_name.include? method.to_s
       end
     end
 
@@ -132,7 +162,8 @@ module SqsSimplify
       end
 
       def now
-        @job.send :execute, @message
+        @message.delete 'namespace'
+        @job.send :_execute, @message
         :executed
       end
 

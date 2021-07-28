@@ -11,6 +11,11 @@ RSpec.describe SqsSimplify::Job do
     expect(SqsSimplify.consumers.map(&:queue_name)).to include('my_job', 'job_example1')
   end
 
+  it 'does not must include the class JobExample::Inner in SqsSimplify.consumers' do
+    SqsSimplify.consumers
+    expect(SqsSimplify.consumers).to_not include(JobExample1::Inner)
+  end
+
   context 'class methods' do
     it 'must create dynamically methods' do
       expect(JobExample).to respond_to(:method_one)

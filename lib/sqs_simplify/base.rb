@@ -200,7 +200,7 @@ module SqsSimplify
         return if sub.name.nil?
         return if %w[SqsSimplify::Job SqsSimplify::Consumer SqsSimplify::Scheduler].include? sub.name
 
-        if sub < SqsSimplify::Consumer || sub < SqsSimplify::Job
+        if %w[SqsSimplify::Consumer SqsSimplify::Job].include? sub.superclass.name
           SqsSimplify.consumers << sub
         elsif sub < SqsSimplify::Scheduler
           SqsSimplify.schedulers << sub

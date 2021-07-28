@@ -57,14 +57,8 @@ RSpec.describe SqsSimplify::Job do
     end
 
     context '._reserved_method_name' do
-      it do
-        methods = %w[consume_messages scheduler consumer namespace]
-        current_methods = SqsSimplify::Job.send :_reserved_method_name
-        expect(current_methods).to eq(methods)
-      end
-
       it 'should raise an exception to reserved method name' do
-        current_methods = SqsSimplify::Job.send :_reserved_method_name
+        current_methods = SqsSimplify::Job.methods
         current_methods.each do |method|
           expect do
             SqsSimplify::Job.send(:_check_reserved_method_name!, method)

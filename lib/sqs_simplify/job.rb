@@ -22,10 +22,15 @@ module SqsSimplify
       def namespace(namespace, &block)
         raise 'must pass one block' unless block
 
-        klass = Class.new(SqsSimplify::Job)
+        const_name = "#{name}::#{namespace.to_s.split('_').collect(&:capitalize).join}"
+        class_eval <<~M, __FILE__, __LINE__ + 1
+          class #{const_name} < #{self}; end
+        M
+
+        klass = const_get const_name
         _transfer_settings(klass)
 
-        klass.define_singleton_method(:inner) { namespace.to_s }
+        klass.define_singleton_method(:_namespace) { const_name }
         klass.class_eval(&block)
         define_singleton_method(namespace) { klass }
       end
@@ -46,7 +51,7 @@ module SqsSimplify
 
       def _schedule(method, *parameters)
         message = { 'method' => method, 'parameters' => _dump(parameters) }
-        message['namespace'] = inner if respond_to? :inner
+        message['namespace'] = _namespace if respond_to? :_namespace
         ProxyScheduler.new(self, message)
       end
 
@@ -55,7 +60,7 @@ module SqsSimplify
         method = args['method']
         parameters = _load(args['parameters'])
 
-        source = namespace ? send(namespace) : self
+        source = namespace ? const_get(namespace) : self
         instance = source.send :new
         instance.send method, *parameters
       end
@@ -138,12 +143,11 @@ module SqsSimplify
         Marshal.load(Zlib::Inflate.inflate(Base64.decode64(value)))
       end
 
-      def _reserved_method_name
-        %w[consume_messages scheduler consumer namespace]
-      end
-
       def _check_reserved_method_name!(method)
-        raise SqsSimplify::Errors::ReservedMethodName, method if _reserved_method_name.include? method.to_s
+        if SqsSimplify::Job.methods.map(&:to_s).include? method.to_s
+          raise SqsSimplify::Errors::ReservedMethodName,
+                method
+        end
       end
     end
 

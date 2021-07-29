@@ -69,6 +69,8 @@ module SqsSimplify
         _check_reserved_method_name!(method)
         origin_file, definition_line = instance_method(method).source_location
         method_signature = IO.readlines(origin_file)[definition_line.pred].gsub("\n", '').strip
+        return unless method_signature.start_with? 'def '
+
         parameters = _build_parameters(method_signature)
 
         class_eval <<~M, __FILE__, __LINE__ + 1

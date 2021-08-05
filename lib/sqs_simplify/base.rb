@@ -150,10 +150,11 @@ module SqsSimplify
 
       def build_queue_full_name
         [
-          SqsSimplify.settings.queue_prefix,
+          settings[:queue_prefix] || SqsSimplify.settings.queue_prefix,
           queue_name,
-          SqsSimplify.settings.queue_suffix
-        ].compact.join('_')
+          settings[:queue_suffix] || SqsSimplify.settings.queue_suffix
+        ].reject { |value| value.nil? || value.empty? }
+          .join('_')
       end
 
       def build_dead_queue_class

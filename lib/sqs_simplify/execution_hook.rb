@@ -26,6 +26,15 @@ module SqsSimplify
       def resolver_exception(&block)
         hooks[:resolver_exception] = block
       end
+
+      def add_hook(hook_name, *hook_names)
+        hook_names.unshift(hook_name)
+        hook_names.each do |name|
+          define_singleton_method(name) do |&block|
+            hooks[name.to_sym] = block
+          end
+        end
+      end
     end
 
     def self.included(base)

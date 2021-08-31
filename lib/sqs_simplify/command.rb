@@ -6,8 +6,6 @@ require 'optparse'
 module SqsSimplify
   class Command
     def initialize(args = nil)
-      check_rails
-
       @options = {
         pid_dir: "#{root}/tmp/pids",
         log_dir: "#{root}/log"
@@ -25,7 +23,7 @@ module SqsSimplify
         end
 
         opt.on('-e', '--environment=environment', 'Environment') { |env| @options[:environment] = env }
-        opt.on('--queues=workers', 'queues that will be consumed') { |queues| @queues = queues.split(',') }
+        opt.on('--queues=queues', 'queues that will be consumed') { |queues| @queues = queues.split(',') }
         opt.on('--priority', 'with priority in the queues') { |priority| @priority = priority }
 
         opt.on('--pid-dir=DIR', 'Specifies an alternate directory in which to store the process ids.') do |dir|
@@ -71,6 +69,7 @@ module SqsSimplify
     def run(process_name)
       Daemons.run_proc(process_name, dir: @options[:pid_dir], dir_mode: :normal, ARGV: @args) do
         after_fork
+        SqsSimplify.call_hook(:after_fork)
         time = 0
 
         while running_process
@@ -121,15 +120,6 @@ module SqsSimplify
       @files_to_reopen = []
       ObjectSpace.each_object(File) do |file|
         @files_to_reopen << file unless file.closed?
-      end
-    end
-
-    def check_rails
-      if Object.const_defined?('Rails')
-        SqsSimplify.logger.info "Initializing Rails project\n"
-        Rails.configuration.eager_load = true
-        Rails.configuration.allow_concurrency = true
-        Rails.application.eager_load!
       end
     end
   end

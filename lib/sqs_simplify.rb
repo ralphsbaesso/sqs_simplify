@@ -28,7 +28,7 @@ require 'sqs_simplify/errors/reserved_method_name'
 module SqsSimplify
   include SqsSimplify::ExecutionHook
 
-  class Error < StandardError; end
+  add_hook :message_not_deleted, :after_fork
 
   class << self
     def configure
@@ -51,10 +51,6 @@ module SqsSimplify
       @schedulers ||= []
     end
 
-    def message_not_deleted(&block)
-      hooks[:message_not_deleted] = block
-    end
-
     def logger
       return @logger if @logger
 
@@ -63,4 +59,6 @@ module SqsSimplify
       @logger = Logger.new("#{path}/sqs_simplify.log")
     end
   end
+
+  class Error < StandardError; end
 end

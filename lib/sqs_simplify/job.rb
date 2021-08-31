@@ -19,27 +19,18 @@ module SqsSimplify
         @consumer ||= _build_consumer
       end
 
-      def namespace(namespace, &block)
-        raise 'must pass one block' unless block
-
-        const_name = "#{name}::#{namespace.to_s.split('_').collect(&:capitalize).join}"
-        class_eval <<~M, __FILE__, __LINE__ + 1
-          class #{const_name} < #{self}; end
-        M
-
-        klass = const_get const_name
-        _transfer_settings(klass)
-
-        klass.define_singleton_method(:_namespace) { const_name }
-        klass.class_eval(&block)
-        define_singleton_method(namespace) { klass }
-      end
-
       private
 
       def inherited(sub)
         super
-        sub.set :scheduler, true
+
+        if sub.superclass == SqsSimplify::Job
+          sub.set :scheduler, true
+        else
+          _transfer_settings(sub)
+          sub.instance_variable_set :@consumer, consumer
+          sub.instance_variable_set :@scheduler, scheduler
+        end
       end
 
       def method_added(method)
@@ -50,17 +41,16 @@ module SqsSimplify
       end
 
       def _schedule(method, *parameters)
-        message = { 'method' => method, 'parameters' => _dump(parameters) }
-        message['namespace'] = _namespace if respond_to? :_namespace
+        message = { 'class' => name, 'method' => method, 'parameters' => _dump(parameters) }
         ProxyScheduler.new(self, message)
       end
 
       def _execute(args)
-        namespace = args['namespace']
         method = args['method']
+        class_name = args['class']
         parameters = _load(args['parameters'])
 
-        source = namespace ? const_get(namespace) : self
+        source = const_get(class_name)
         instance = source.send :new
         instance.send method, *parameters
       end
@@ -121,7 +111,7 @@ module SqsSimplify
       def _build_consumer
         klass = Class.new(SqsSimplify::Consumer) do
           def perform
-            self.class.father_job.send :_execute, message
+            SqsSimplify::Job.send :_execute, message
           end
         end
         _transfer_settings(klass)
@@ -132,9 +122,6 @@ module SqsSimplify
         sub.instance_variable_set :@queue_name, queue_name
         sub.instance_variable_set :@settings, settings
         sub.instance_variable_set :@client, client
-
-        current_job = self
-        sub.define_singleton_method(:father_job) { current_job }
       end
 
       def _dump(value)
@@ -168,7 +155,6 @@ module SqsSimplify
       end
 
       def now
-        @message.delete 'namespace'
         @job.send :_execute, @message
         :executed
       end

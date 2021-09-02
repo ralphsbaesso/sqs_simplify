@@ -28,7 +28,7 @@ module SqsSimplify
     attr_reader :message, :sqs_message
 
     class << self
-      def consume_messages(amount = 10)
+      def consume_messages(amount = maximum_message_quantity)
         visibility_timeout # load
         sqs_messages = fetch_messages(amount)
         consume_sqs_messages(sqs_messages, Time.now)
@@ -47,6 +47,13 @@ module SqsSimplify
       end
 
       protected
+
+      def maximum_message_quantity
+        number = settings[:maximum_message_quantity].to_i
+        number.positive? && number <= 10 ? number : 10
+      rescue StandardError
+        10
+      end
 
       def parallel_type
         settings[:parallel_type]

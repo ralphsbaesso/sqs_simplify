@@ -47,6 +47,25 @@ RSpec.describe SqsSimplify::Consumer do
         expect(ConsumerExample.send(:consume_messages)).to eq(0)
       end
     end
+
+    context '.maximum_message_quantity' do
+      after do
+        ConsumerExample.set :maximum_message_quantity, nil
+      end
+
+      it 'must return the chosen number' do
+        number = rand(10)
+        ConsumerExample.set :maximum_message_quantity, number
+        expect(ConsumerExample.send(:maximum_message_quantity)).to eq(number)
+      end
+
+      it 'must return number 10 to invalid option' do
+        [-1, 11, :a, 'b', nil].each do |number|
+          ConsumerExample.set :maximum_message_quantity, number
+          expect(ConsumerExample.send(:maximum_message_quantity)).to eq(10)
+        end
+      end
+    end
   end
 
   private

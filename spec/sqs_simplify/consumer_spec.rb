@@ -54,7 +54,7 @@ RSpec.describe SqsSimplify::Consumer do
       end
 
       it 'must return the chosen number' do
-        number = rand(10)
+        number = rand(1..10)
         ConsumerExample.set :maximum_message_quantity, number
         expect(ConsumerExample.send(:maximum_message_quantity)).to eq(number)
       end

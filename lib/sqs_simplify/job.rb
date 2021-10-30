@@ -7,8 +7,8 @@ module SqsSimplify
     private_class_method :new
 
     class << self
-      def consume_messages
-        consumer.consume_messages
+      def consume_messages(amount = nil)
+        consumer.consume_messages amount
       end
 
       def scheduler
@@ -48,11 +48,22 @@ module SqsSimplify
       def _execute(args)
         method = args['method']
         class_name = args['class']
-        parameters = _load(args['parameters'])
+        array_params, hash_params = _read_parameters args['parameters']
 
         source = const_get(class_name)
         instance = source.send :new
-        instance.send method, *parameters
+        instance.send method, *array_params, **hash_params
+      end
+
+      def _read_parameters(parameters)
+        parameters = _load(parameters)
+
+        if parameters.last.is_a? Hash
+          hash = parameters.pop
+          [parameters, hash]
+        else
+          [parameters, {}]
+        end
       end
 
       def _add_method(method)

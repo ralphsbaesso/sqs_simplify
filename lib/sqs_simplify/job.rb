@@ -4,6 +4,7 @@ require 'zlib'
 
 module SqsSimplify
   class Job < SqsSimplify::Base
+    set :scheduler, true
     private_class_method :new
 
     class << self
@@ -52,7 +53,7 @@ module SqsSimplify
 
         source = const_get(class_name)
         instance = source.send :new
-        instance.send method, *array_params, **hash_params
+        hash_params ? instance.send(method, *array_params, **hash_params) : instance.send(method, *array_params)
       end
 
       def _read_parameters(parameters)
@@ -62,7 +63,7 @@ module SqsSimplify
           hash = parameters.pop
           [parameters, hash]
         else
-          [parameters, {}]
+          [parameters]
         end
       end
 
@@ -130,9 +131,9 @@ module SqsSimplify
       end
 
       def _transfer_settings(sub)
-        sub.instance_variable_set :@queue_name, queue_name
-        sub.instance_variable_set :@settings, settings
+        sub.instance_variable_set :@settings, settings.clone
         sub.instance_variable_set :@client, client
+        sub.set :queue_name, queue_name
       end
 
       def _dump(value)
@@ -173,7 +174,7 @@ module SqsSimplify
       private
 
       def scheduler?
-        @job.settings[:scheduler]
+        SqsSimplify::Job.settings[:scheduler] && @job.settings[:scheduler]
       end
     end
   end

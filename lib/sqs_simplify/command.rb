@@ -105,12 +105,10 @@ module SqsSimplify
 
     def after_fork
       @files_to_reopen.each do |file|
-        begin
-          file.reopen file.path, 'a+'
-          file.sync = true
-        rescue StandardError
-          # Ignored
-        end
+        file.reopen file.path, 'a+'
+        file.sync = true
+      rescue StandardError
+        # Ignored
       end
     end
 

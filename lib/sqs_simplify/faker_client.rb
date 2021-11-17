@@ -34,7 +34,8 @@ module SqsSimplify
     def get_queue_attributes(queue_url:, **_args)
       messages = pool.select { |message| message.queue_url == queue_url }
       OpenStruct.new(attributes: {
-                       'ApproximateNumberOfMessages' => messages.count
+                       'ApproximateNumberOfMessages' => messages.count,
+                       'VisibilityTimeout' => 60
                      })
     end
 

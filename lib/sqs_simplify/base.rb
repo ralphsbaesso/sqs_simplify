@@ -26,11 +26,11 @@ module SqsSimplify
       end
 
       def queue_name
-        @queue_name ||= (settings[:queue_name] || to_underscore(name)).to_s
+        (settings[:queue_name] || to_underscore(name)).to_s
       end
 
       def queue_full_name
-        @queue_full_name ||= build_queue_full_name
+        build_queue_full_name
       end
 
       def queue_url
@@ -201,7 +201,7 @@ module SqsSimplify
         return if sub.name.nil?
         return if %w[SqsSimplify::Job SqsSimplify::Consumer SqsSimplify::Scheduler].include? sub.name
 
-        if %w[SqsSimplify::Consumer SqsSimplify::Job].include? sub.superclass.name
+        if sub < SqsSimplify::Consumer || sub < SqsSimplify::Job
           SqsSimplify.consumers << sub
         elsif sub < SqsSimplify::Scheduler
           SqsSimplify.schedulers << sub

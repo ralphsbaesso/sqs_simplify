@@ -9,11 +9,9 @@ RSpec.describe SqsSimplify do
     context '.logger' do
       let(:path) { './log/sqs_simplify.log' }
       after do
-        begin
-          File.delete(path)
-        rescue StandardError
-          # Ignored
-        end
+        File.delete(path)
+      rescue StandardError
+        # Ignored
       end
       it 'create file' do
         string = 'Test 123'

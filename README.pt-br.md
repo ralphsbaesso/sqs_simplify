@@ -75,11 +75,14 @@ class WheelFactory
   end
 end
 
+
+wheel_factory = WheelFactory.new
+
 # run now
-WheelFactory.send_now # "8685d169-f4a0-476b-b970-39ee055f957b"
+wheel_factory.send_now # "8685d169-f4a0-476b-b970-39ee055f957b"
 
 # run after 2 minutes
-WheelFactory.send_later(120) # "5ebd6a74-8571-43e2-a9c8-7866b7598765"
+wheel_factory.send_later(120) # "5ebd6a74-8571-43e2-a9c8-7866b7598765"
 
 ```
 
@@ -204,27 +207,25 @@ Disponibiliza dois parâmetro:
 * **primeiro parâmetro** é uma **Exception**. 
 * **segundo parâmetro** pode variar de acordo com o componente e a onde ocorreu a **Exception**.
 
-**message_not_deleted:** É invocado quando a mesagem não é apagada da File SQS.
+**message_not_deleted:** É invocado quando um Job ou Consumer pega uma mesagem da fila SQS não não consegue apagá-la.
 Há dois principais motivo para ocorrer:
 * **Exception**: quando ocorre uma **Exception**. Obs: também será invocado o hook **resolver_exception**.
 * **Default visibility timeout**: A mensagem não foi processada no tempo definido.
+
+**after_fork:** É invocado na inicialização do processo background para consumir as filas SQS.
+É o local ideal para inicializar/carregar dados da sua aplicação.
+Por exemplo o Rails no modo de desenvolvimento você pode carregar dados nescessário para o funcionamento da aplicação.
 
 ```ruby
 # sqs_simplify.rb
 
 SqsSimplify.configure do |config|
   config.hooks.resolver_exception do |exception, args|
-    Event.add "SqsSimplify => #{exception.message}",
-              type: :exception,
-              args: args.as_json,
-              backtrace: exception.backtrace
-  rescue StandardError => e
-    warn e.message
-    warn e.backtrace
+    logger.info "Exception => #{exception.message}, args => #{args}"
   end
 
   config.hooks.message_not_deleted do |consumer|
-    Event.add 'Mensagem SQS não deletada!', type: :message_not_deleted, consumer: consumer
+    logger.info "Consumer => #{consumer}"
   end
 
   config.hooks.after_fork do
@@ -236,6 +237,51 @@ end
 
 ___
 
+## Processo Background
+### 1. Configuração
+Para rodar o processo em background deve criar um arquivo de script.
+Exemplo de um arquivo de script nomeado de *sqs_simplify*
+
+```ruby
+#!/usr/bin/env ruby
+
+require 'sqs_simplify/command'
+SqsSimplify::Command.new(ARGV).daemonize
+```
+
+Para projeto Rails você pode carragar a aplicação antes da invocação da GEM.
+Exemplo de um arquivo de script nomeado de *bin/sqs_simplify*
+```ruby
+#!/usr/bin/env ruby
+
+require File.expand_path(File.join(File.dirname(__FILE__), '..', 'config', 'environment'))
+require 'sqs_simplify/command'
+SqsSimplify::Command.new(ARGV).daemonize
+```
+
+E deve dar permissão de execução.
+````bash
+$ chmod +x sqs_simplify
+````
+
+### 1. Comandos
+Para ver opções do comando execute no diretório do arquivo:
+
+````bash
+$ sqs_simplify -h
+Usage: sqs_simplify [options]
+    -h, --help                       Show help
+    -n, --number_of_workers=workers  Number of unique workers to spawn
+    -e, --environment=environment    Environment
+        --queues=queues              queues that will be consumed
+        --priority                   with priority in the queues
+        --pid-dir=DIR                Specifies an alternate directory in which to store the process ids.
+        --log-dir=DIR                Specifies an alternate directory in which to store the delayed_job log.
+
+
+````
+
+___
 ## Contribuição
 
 https://github.com/ralphsbaesso/sqs_simplify.
@@ -245,6 +291,3 @@ https://github.com/ralphsbaesso/sqs_simplify.
 
 The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
 
-## Code of Conduct
-
-Everyone interacting in the SqsSimplify project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/[USERNAME]/sqs_simplify/blob/master/CODE_OF_CONDUCT.md).

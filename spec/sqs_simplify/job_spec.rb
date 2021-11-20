@@ -26,6 +26,14 @@ RSpec.describe SqsSimplify::Job do
           expect(JobExample.queue_name).to eq(consumer.queue_name)
         end
 
+        it 'subclass must same queue_name the superclass by default' do
+          expect(ChildrenJobExample.queue_name).to eq(JobExample.queue_name)
+        end
+
+        it 'subclass don\'t must same queue_name the super class when set queue_name' do
+          expect(ChildrenJobExample2.queue_name).to_not eq(JobExample.queue_name)
+        end
+
         context 'with prefix' do
           before do
             JobExample.instance_variable_set :@queue_name, nil

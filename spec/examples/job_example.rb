@@ -33,3 +33,10 @@ end
 
 class JobExample1 < SqsSimplify::Job
 end
+
+class ChildrenJobExample < JobExample
+end
+
+class ChildrenJobExample2 < JobExample
+  set :queue_name, :children_job2
+end

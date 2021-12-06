@@ -77,6 +77,15 @@ RSpec.describe SqsSimplify::Job do
       end
     end
 
+    context '.consumer.maximum_message_quantity' do
+      it do
+        [4, 7, 8, 9, 10].each do |amount|
+          JobExample.set :maximum_message_quantity, amount
+          expect(JobExample.consumer.send(:maximum_message_quantity)).to eq(amount)
+        end
+      end
+    end
+
     context '.client' do
       it 'must share the same client in subclasses' do
         client = JobExample1.client

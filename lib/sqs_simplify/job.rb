@@ -114,7 +114,7 @@ module SqsSimplify
       def _build_scheduler
         klass = Class.new(SqsSimplify::Scheduler)
         klass.private_class_method :send_message
-        _transfer_settings(klass)
+        _transfer_settings(klass, clone_settings: false)
         klass
       end
 
@@ -124,12 +124,12 @@ module SqsSimplify
             SqsSimplify::Job.send :_execute, message
           end
         end
-        _transfer_settings(klass)
+        _transfer_settings(klass, clone_settings: false)
         klass
       end
 
-      def _transfer_settings(sub)
-        sub.instance_variable_set :@settings, settings.clone
+      def _transfer_settings(sub, clone_settings: true)
+        sub.instance_variable_set :@settings, clone_settings ? settings.clone : settings
         sub.instance_variable_set :@client, client
         sub.set :queue_name, queue_name
       end

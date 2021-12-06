@@ -29,8 +29,6 @@ module SqsSimplify
           sub.set :scheduler, true
         else
           _transfer_settings(sub)
-          sub.instance_variable_set :@consumer, consumer
-          sub.instance_variable_set :@scheduler, scheduler
         end
       end
 

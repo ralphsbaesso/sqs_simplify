@@ -32,6 +32,8 @@ RSpec.describe SqsSimplify::Job do
 
         it 'subclass don\'t must same queue_name the super class when set queue_name' do
           expect(ChildrenJobExample2.queue_name).to_not eq(JobExample.queue_name)
+          expect(ChildrenJobExample2.scheduler.queue_name).to_not eq(JobExample.queue_name)
+          expect(ChildrenJobExample2.consumer.queue_name).to_not eq(JobExample.queue_name)
         end
 
         context 'with prefix' do

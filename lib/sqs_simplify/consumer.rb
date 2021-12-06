@@ -28,7 +28,8 @@ module SqsSimplify
     attr_reader :message, :sqs_message
 
     class << self
-      def consume_messages(amount = maximum_message_quantity)
+      def consume_messages(amount = nil)
+        amount ||= maximum_message_quantity
         visibility_timeout # load
         sqs_messages = fetch_messages(amount)
         consume_sqs_messages(sqs_messages, Time.now)

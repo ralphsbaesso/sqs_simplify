@@ -26,6 +26,10 @@ RSpec.configure do |config|
   config.before do
     SqsSimplify::FakerClient.purger!
   end
+
+  config.before :suite do
+    SqsSimplify.configure.faker = true
+  end
 end
 
 Aws.config.update(stub_responses: true)

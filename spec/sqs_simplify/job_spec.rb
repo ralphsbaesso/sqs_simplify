@@ -1,19 +1,48 @@
 # frozen_string_literal: true
 
 RSpec.describe SqsSimplify::Job do
-  context 'private constant' do
-    it 'should raise an exception' do
-      expect { SqsSimplify::Job.new }.to raise_error(/private method/)
-    end
-  end
-
   it 'job (<name_job>::Consumer>) must be included in the variable "jobs" of SqsSimplify' do
     expect(SqsSimplify.consumers.map(&:queue_name)).to include('my_job', 'job_example1')
   end
 
+  context 'instance methods' do
+    before do
+      clear_variables(JobExample, :@scheduler, :@consumer, :@client)
+    end
+
+    context '#perform' do
+      it 'must implement method "perform"' do
+        job = SqsSimplify::Job.new_job
+        expect { job.perform }.to raise_error(/NotImplemented/)
+      end
+    end
+
+    context '#perform_later' do
+      it 'must schedule methods' do
+        job = JobExample.new_job
+        uuid = job.perform_later 123
+        expect(uuid).to be_a(String)
+
+        job = JobExampleA.new_job
+        uuid = job.perform_later 123, arg: 'X'
+        expect(uuid).to be_a(String)
+
+        job = JobExampleB.new_job
+        uuid = job.perform_later 123, 1, 2, 3
+        expect(uuid).to be_a(String)
+
+        job = JobExampleC.new_job
+        uuid = job.perform_later a: 1, b: 2, **{ e: 5, f: 6 }
+        expect(uuid).to be_a(String)
+      end
+    end
+  end
+
   context 'class methods' do
-    it 'must create dynamically methods' do
-      expect(JobExample).to respond_to(:method_one)
+    context '.new' do
+      it 'should raise an exception' do
+        expect { SqsSimplify::Job.new }.to raise_error(/private method/)
+      end
     end
 
     context '.queue_name' do
@@ -66,23 +95,20 @@ RSpec.describe SqsSimplify::Job do
       end
     end
 
-    context '._reserved_method_name' do
-      it 'should raise an exception to reserved method name' do
-        current_methods = SqsSimplify::Job.methods
-        current_methods.each do |method|
-          expect do
-            SqsSimplify::Job.send(:_check_reserved_method_name!, method)
-          end.to raise_error(SqsSimplify::Errors::ReservedMethodName)
-        end
-      end
-    end
-
     context '.consumer.maximum_message_quantity' do
       it do
         [4, 7, 8, 9, 10].each do |amount|
           JobExample.set :maximum_message_quantity, amount
           expect(JobExample.consumer.send(:maximum_message_quantity)).to eq(amount)
         end
+      end
+    end
+
+    context '.consumer_messages' do
+      it do
+        amount = [4, 7, 8, 9, 10].sample
+        result = JobExample.consume_messages amount
+        expect(result).to eq(0)
       end
     end
 
@@ -96,15 +122,12 @@ RSpec.describe SqsSimplify::Job do
 
     context 'with FakerClient' do
       before do
-        SqsSimplify.configure.faker = true
         clear_variables(JobExample, :@scheduler, :@consumer, :@client)
       end
 
-      after { SqsSimplify.configure.faker = nil }
-
       context 'one cycle' do
         it do
-          JobExample.method_one(:value1).later
+          JobExample.new_job.perform_later(:value1)
           expect(JobExample.count_messages).to eq(1)
 
           consumer = JobExample.consumer
@@ -118,17 +141,16 @@ RSpec.describe SqsSimplify::Job do
       context '.schedule' do
         it 'must to schedule' do
           value = :test
-          expect(JobExample.method_one(value).now).to eq(:executed)
+          expect(JobExample.new_job.perform(value)).to eq(:executed)
 
           expect(JobExample.settings[:scheduler]).to be_truthy
-          message_id = JobExample.method_one(value).later
-          expect(message_id.to_i).to be > 0
+          message_id = JobExample.new_job.perform_later(value)
+          expect(message_id).to_not eq(:executed)
 
-          JobExample.set :scheduler, false
-          expect(JobExample.settings[:scheduler]).to be_falsey
-          expect(JobExample.method_one(value).now).to eq(:executed)
-          expect(JobExample.method_two(value, arg: 123).later).to eq(:executed)
-          expect(JobExample.method_three(value).later(1)).to eq(:executed)
+          SqsSimplify::Job.set :scheduler, false
+          expect(JobExample.new_job.perform(value)).to eq(:executed)
+          expect(JobExampleA.new_job.perform_later(value, arg: 123)).to eq(:executed)
+          expect(JobExampleB.new_job(after: 1).perform_later(value)).to eq(:executed)
         end
       end
     end

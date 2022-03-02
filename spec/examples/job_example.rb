@@ -10,16 +10,8 @@ class JobExample < SqsSimplify::Job
   set :queue_name, :my_job
   @@errors = []
 
-  def method_one(value)
+  def perform(value)
     "value: #{value}"
-  end
-
-  def method_two(value, arg:, arg1: 2)
-    "values: #{value}, #{arg}, #{arg1}"
-  end
-
-  def method_three(value, arg = nil, *rest)
-    "values: #{value}, #{arg}, #{rest}"
   end
 
   def errors
@@ -28,6 +20,24 @@ class JobExample < SqsSimplify::Job
 
   def self.errors
     @@errors
+  end
+end
+
+class JobExampleA < JobExample
+  def perform(value, arg:, arg1: 2)
+    "values: #{value}, #{arg}, #{arg1}"
+  end
+end
+
+class JobExampleB < JobExample
+  def perform(value, arg = nil, *rest)
+    "values: #{value}, #{arg}, #{rest}"
+  end
+end
+
+class JobExampleC < JobExample
+  def perform(a:, b:, c: 'c', **rest, &_block)
+    "values: #{a}, #{b}, #{c}, #{rest}"
   end
 end
 

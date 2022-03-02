@@ -85,10 +85,14 @@ RSpec.describe SqsSimplify::Scheduler do
 
     context '.call_hook' do
       before do
+        clear_variables SchedulerExample, :@client
+        SqsSimplify.settings.faker = false
         SchedulerExample.resolver_exception do |_a, _b|
           @error_occurred = true
         end
       end
+
+      after { SqsSimplify.settings.faker = true }
 
       it 'must mark error_occurred as true' do
         allow_any_instance_of(Aws::SQS::Client).to receive(:send_message).and_raise('One error')

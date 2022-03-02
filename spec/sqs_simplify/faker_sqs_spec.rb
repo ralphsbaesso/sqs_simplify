@@ -2,13 +2,11 @@
 
 RSpec.describe SqsSimplify::FakerClient do
   before do
-    SqsSimplify.settings.faker = true
     SchedulerExample.instance_variable_set(:@client, nil)
     ConsumerExample.instance_variable_set(:@client, nil)
   end
 
   after do
-    SqsSimplify.settings.faker = false
     SchedulerExample.instance_variable_set(:@client, nil)
     ConsumerExample.instance_variable_set(:@client, nil)
   end

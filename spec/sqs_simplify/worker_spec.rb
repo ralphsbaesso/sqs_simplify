@@ -2,9 +2,6 @@
 
 RSpec.describe SqsSimplify::Worker do
   context 'instance methods' do
-    before(:all) { SqsSimplify.configure.faker = true }
-    after(:all) { SqsSimplify.configure.faker = nil }
-
     context '#perform' do
       it 'must return an Integer' do
         worker = SqsSimplify::Worker.new
@@ -45,10 +42,10 @@ RSpec.describe SqsSimplify::Worker do
           expect { worker.perform }.to raise_error(/Option queue invalid:/)
         end
 
-        it 'must execution' do
-          40.times { JobFast.my_method.later }
-          5.times { JobMedium.my_method.later }
-          2.times { JobSlow.my_method.later }
+        xit 'must execution' do
+          40.times { JobFast.new_job.perform_later }
+          5.times { JobMedium.new_job.perform_later }
+          2.times { JobSlow.new_job.perform_later }
 
           executions = []
           queues = %w[job_fast job_slow job_medium]

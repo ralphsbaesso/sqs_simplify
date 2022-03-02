@@ -4,10 +4,15 @@ module SqsSimplify
   class FakerClient
     def send_message(sqs_message)
       id = next_id
-      message = OpenStruct.new receipt_handle: id,
-                               body: sqs_message[:message_body],
-                               queue_url: sqs_message[:queue_url]
-      pool << message
+      url = sqs_message[:queue_url]
+      body = sqs_message[:message_body]
+      message = OpenStruct.new(receipt_handle: id, body: body, queue_url: url)
+
+      if pool[url]
+        pool[url] << message
+      else
+        pool[url] = [message]
+      end
       OpenStruct.new(message_id: id)
     end
 
@@ -19,20 +24,21 @@ module SqsSimplify
           max_number_of_messages
         end
 
-      messages = pool.select { |message| message[:queue_url] == queue_url }[0, amount]
+      messages = (pool[queue_url] || [])[0, amount]
       OpenStruct.new(messages: messages)
     end
 
     def delete_message(queue_url:, receipt_handle:)
-      pool.delete_if do |message|
-        message.receipt_handle == receipt_handle &&
-          message.queue_url == queue_url
+      messages = pool[queue_url] || []
+      messages.delete_if do |message|
+        message.receipt_handle == receipt_handle && message.queue_url == queue_url
       end
+
       true
     end
 
     def get_queue_attributes(queue_url:, **_args)
-      messages = pool.select { |message| message.queue_url == queue_url }
+      messages = pool[queue_url] || []
       OpenStruct.new(attributes: {
                        'ApproximateNumberOfMessages' => messages.count,
                        'VisibilityTimeout' => 60
@@ -61,11 +67,11 @@ module SqsSimplify
       end
 
       def pool
-        @pool ||= []
+        @pool ||= {}
       end
 
       def purger!
-        @pool = []
+        @pool = {}
       end
     end
   end

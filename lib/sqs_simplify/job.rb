@@ -19,8 +19,6 @@ module SqsSimplify
       self.class.send :_dump, parameters
     end
 
-    private
-
     class << self
       def new_job(**options)
         ProxyJob.new(new, **options)
@@ -112,7 +110,7 @@ module SqsSimplify
         klass
       end
 
-      def _build_sub_class(module_name, str_eval = '')
+      def _build_sub_class(module_name)
         class_eval <<~M, __FILE__, __LINE__ + 1
           class #{self}::#{module_name}Job < SqsSimplify::#{module_name}
             def self.settings

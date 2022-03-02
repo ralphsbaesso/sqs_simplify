@@ -42,7 +42,7 @@ RSpec.describe SqsSimplify::Worker do
           expect { worker.perform }.to raise_error(/Option queue invalid:/)
         end
 
-        xit 'must execution' do
+        it 'must execution' do
           40.times { JobFast.new_job.perform_later }
           5.times { JobMedium.new_job.perform_later }
           2.times { JobSlow.new_job.perform_later }

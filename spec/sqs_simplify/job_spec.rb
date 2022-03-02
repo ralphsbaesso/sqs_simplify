@@ -139,6 +139,8 @@ RSpec.describe SqsSimplify::Job do
       end
 
       context '.schedule' do
+        after { SqsSimplify::Job.set :scheduler, true }
+
         it 'must to schedule' do
           value = :test
           expect(JobExample.new_job.perform(value)).to eq(:executed)

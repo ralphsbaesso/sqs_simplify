@@ -48,7 +48,8 @@ RSpec.describe SqsSimplify::FakerClient do
       end
 
       expect(SchedulerExample.count_messages).to eq(2)
-      expect(SqsSimplify::FakerClient.pool.count).to eq(2)
+      queue_url = SchedulerExample.queue_url
+      expect(SqsSimplify::FakerClient.pool[queue_url].count).to eq(2)
     end
   end
 end

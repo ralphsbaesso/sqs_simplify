@@ -11,8 +11,12 @@ module SqsSimplify
       @after = options[:after]
     end
 
-    def perform
+    def perform(*_rest, **_keyrest)
       raise 'NotImplemented'
+    end
+
+    def new_job(**options)
+      self.class.new_job(**options)
     end
 
     def dump(parameters)
@@ -21,7 +25,7 @@ module SqsSimplify
 
     class << self
       def new_job(**options)
-        ProxyJob.new(new, **options)
+        self::ProxyJob.new(new, **options)
       end
 
       def consume_messages(amount = nil)
@@ -130,10 +134,6 @@ module SqsSimplify
         const_get "#{self}::#{module_name}Job"
       end
 
-      def _transfer_settings(sub)
-        # sub.set :queue_name, queue_name
-      end
-
       def _dump(value)
         Base64.encode64(Zlib::Deflate.deflate(Marshal.dump(value)))
       end
@@ -166,6 +166,14 @@ module SqsSimplify
       end
 
       private
+
+      def respond_to_missing?(symbol, value = nil)
+        @job.respond_to? symbol, value
+      end
+
+      def method_missing(symbol, *rest, **keyrest)
+        @job.send symbol, *rest, **keyrest
+      end
 
       def scheduler?
         SqsSimplify::Job.settings[:scheduler] && @job.class.settings[:scheduler]

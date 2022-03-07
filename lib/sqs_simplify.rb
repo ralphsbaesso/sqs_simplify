@@ -62,3 +62,5 @@ module SqsSimplify
 
   class Error < StandardError; end
 end
+
+require 'sqs_simplify/old_job' if RUBY_VERSION < '3.0.0'

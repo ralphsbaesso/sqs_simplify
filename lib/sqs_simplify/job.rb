@@ -28,6 +28,14 @@ module SqsSimplify
         self::ProxyJob.new(new, **options)
       end
 
+      def perform(*rest, **keyrest)
+        new_job.perform(*rest, **keyrest)
+      end
+
+      def perform_later(*rest, **keyrest)
+        new_job.perform_later(*rest, **keyrest)
+      end
+
       def consume_messages(amount = nil)
         consumer.consume_messages amount
       end

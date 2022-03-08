@@ -1,9 +1,17 @@
 # frozen_string_literal: true
 
-# Override to ruby version < 3.0.0
 module SqsSimplify
+  # Override to ruby version < 3.0.0
   class Job
     class << self
+      def perform(*rest)
+        new_job.perform(*rest)
+      end
+
+      def perform_later(*rest)
+        new_job.perform_later(*rest)
+      end
+
       def call_validator_parameters!(parameters)
         _validator_parameters.call(*parameters)
       end

@@ -51,7 +51,7 @@ module SqsSimplify
           'class' => @job.class.name,
           'parameters' => @job.dump(parameters)
         }
-        @job.class.scheduler.send(:send_message, message: message, after: @after)
+        send_message message
       end
 
       private

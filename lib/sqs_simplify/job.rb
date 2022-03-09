@@ -7,10 +7,6 @@ module SqsSimplify
     set :scheduler, true
     private_class_method :new
 
-    def initialize(**options)
-      @after = options[:after]
-    end
-
     def perform(*_rest, **_keyrest)
       raise 'NotImplemented'
     end
@@ -155,6 +151,7 @@ module SqsSimplify
       def initialize(job, **options)
         @job = job
         @after = options[:after]
+        @queue_url = options[:queue_url]
       end
 
       def perform(*array, **hash)
@@ -170,10 +167,15 @@ module SqsSimplify
           'class' => @job.class.name,
           'parameters' => @job.dump(array: array, hash: hash)
         }
-        @job.class.scheduler.send(:send_message, message: message, after: @after)
+
+        send_message message
       end
 
       private
+
+      def send_message(message)
+        @job.class.scheduler.send(:send_message, message: message, after: @after, queue_url: @queue_url)
+      end
 
       def respond_to_missing?(symbol, value = nil)
         @job.respond_to? symbol, value

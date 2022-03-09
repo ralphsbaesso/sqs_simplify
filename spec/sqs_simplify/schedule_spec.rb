@@ -23,6 +23,13 @@ RSpec.describe SqsSimplify::Scheduler do
         message_id = SchedulerExample.send_message message: { a: 'a' }
         expect(message_id).to be_truthy
       end
+
+      it 'send message to other queue' do
+        other_queue_url = SchedulerExample1.queue_url
+        expect do
+          SchedulerExample.send_message message: :test, queue_url: other_queue_url
+        end.to change { SchedulerExample1.count_messages }.by(1)
+      end
     end
 
     context '.queue_url' do

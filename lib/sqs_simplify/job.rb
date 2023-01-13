@@ -32,8 +32,8 @@ module SqsSimplify
         new_job.perform_later(*rest, **keyrest)
       end
 
-      def consume_messages(amount = nil)
-        consumer.consume_messages amount
+      def consume_messages(amount = nil, **options)
+        consumer.consume_messages amount, **options
       end
 
       def scheduler

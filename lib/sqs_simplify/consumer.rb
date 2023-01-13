@@ -28,8 +28,11 @@ module SqsSimplify
     attr_reader :message, :sqs_message
 
     class << self
-      def consume_messages(amount = nil)
+      def consume_messages(amount = nil, worker_size: nil, parallel_type: nil)
         amount ||= maximum_message_quantity
+        @worker_size = worker_size.to_i
+        @parallel_type = parallel_type
+
         visibility_timeout # load
         sqs_messages = fetch_messages(amount)
         consume_sqs_messages(sqs_messages, Time.now)
@@ -56,14 +59,6 @@ module SqsSimplify
         10
       end
 
-      def parallel_type
-        settings[:parallel_type]
-      end
-
-      def amount_processes
-        settings[:amount_processes]
-      end
-
       private
 
       def fetch_messages(amount = 10)
@@ -82,7 +77,7 @@ module SqsSimplify
       end
 
       def choose_process(messages, start_time)
-        parallel_type, amount_processes = build_parallel_parameter(messages)
+        parallel_type, amount_processes = build_parallel_parameter(messages.size)
 
         logger.info "Started loop with: { queue_name: #{queue_name}, #{parallel_type}: #{amount_processes}, messages: #{messages.count} }"
         if amount_processes == 1
@@ -94,12 +89,12 @@ module SqsSimplify
         end
       end
 
-      def build_parallel_parameter(messages)
-        process_in_parallel = %w[in_threads in_processes].include?(parallel_type.to_s) &&
-                              amount_processes > 1 &&
-                              messages.count > 1
+      def build_parallel_parameter(messages_size)
+        process_in_parallel = messages_size > 1 &&
+                              @worker_size > 1 &&
+                              %w[in_threads in_processes].include?(@parallel_type.to_s)
 
-        process_in_parallel ? [parallel_type, amount_processes] : [:without_parallel, 1]
+        process_in_parallel ? [@parallel_type, @worker_size] : [:without_parallel, 1]
       end
 
       def consume_sqs_message(sqs_message, start_time)

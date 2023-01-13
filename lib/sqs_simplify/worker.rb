@@ -5,6 +5,8 @@ module SqsSimplify
     def initialize(**options, &callback)
       self.queues = options[:queues]
       self.priority = options[:priority]
+      self.worker_size = options[:worker_size]
+      self.parallel_type = options[:parallel_type]
       self.callback = callback
     end
 
@@ -20,7 +22,7 @@ module SqsSimplify
 
     private
 
-    attr_accessor :queues, :priority, :callback
+    attr_accessor :queues, :priority, :worker_size, :parallel_type, :callback
 
     def sqs_consumers
       @sqs_consumers ||= build_sqs_consumers
@@ -88,7 +90,8 @@ module SqsSimplify
     end
 
     def execute(sqs_consumer)
-      result = sqs_consumer.send :consume_messages
+      options = { worker_size: worker_size, parallel_type: parallel_type }
+      result = sqs_consumer.consume_messages(**options)
       callback&.call(result, sqs_consumer)
       result
     end

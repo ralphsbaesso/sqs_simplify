@@ -6,7 +6,6 @@ source 'https://rubygems.org'
 gemspec
 
 gem 'aws-sdk-sqs', '~> 1.0.0.rc11'
-gem 'daemons', '~> 1.3', '>= 1.3.1'
 gem 'parallel', '~> 1.20', '>= 1.20.1'
 
 gem 'rake', '~> 12.0'

@@ -29,15 +29,6 @@ RSpec.describe SqsSimplify::Consumer do
   end
 
   context 'class methods' do
-    context '.amount_processes' do
-      it do
-        expect(ConsumerExample.send(:amount_processes)).to be_nil
-
-        ConsumerExample.set :amount_processes, 10
-        expect(ConsumerExample.send(:amount_processes)).to eq(10)
-      end
-    end
-
     context '.consume_messages' do
       before do
         ConsumerExample.instance_variable_set :@client, nil

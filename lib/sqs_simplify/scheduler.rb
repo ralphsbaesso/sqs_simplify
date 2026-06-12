@@ -5,10 +5,11 @@ module SqsSimplify
     include SqsSimplify::ExecutionHook
     private_class_method :new
 
-    def initialize(message:, delay_seconds:, queue_url:)
+    def initialize(message:, delay_seconds:, queue_url:, message_group_id: nil)
       @message = message
       @delay_seconds = delay_seconds
       @queue_url = queue_url
+      @message_group_id = message_group_id
     end
 
     private
@@ -17,8 +18,13 @@ module SqsSimplify
       self.class.queue_url
     end
 
+    def build_message
+      Message.new queue_url: @queue_url, body: dump_message(@message), delay_seconds: @delay_seconds,
+                  message_group_id: @message_group_id
+    end
+
     def send_message
-      sqs_message = Message.new queue_url: @queue_url, body: dump_message(@message), delay_seconds: @delay_seconds
+      sqs_message = build_message
       self.class.call_hook :before_each, sqs_message
       client.send_message(sqs_message.to_send).message_id
     rescue Aws::SQS::Errors::NonExistentQueue => e
@@ -31,12 +37,13 @@ module SqsSimplify
     end
 
     class << self
-      def send_message(message:, after: nil, queue_url: nil)
+      def send_message(message:, after: nil, queue_url: nil, message_group_id: nil)
         after = after.nil? ? 0 : after.to_i
         raise 'parameter must be between 0 to 960 seconds' unless after >= 0 && after < 961
 
         queue_url ||= self.queue_url
-        new(message: message, delay_seconds: after, queue_url: queue_url).send :send_message
+        new(message: message, delay_seconds: after, queue_url: queue_url,
+            message_group_id: message_group_id).send :send_message
       end
 
       def map_queue(nickname, &block)

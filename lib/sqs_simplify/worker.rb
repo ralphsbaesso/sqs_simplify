@@ -59,7 +59,7 @@ module SqsSimplify
     end
 
     def check_has_any_consumer!
-      raise 'No queue consumers were found in this project' if sqs_consumers.length.zero?
+      raise 'No queue consumers were found in this project' if sqs_consumers.empty?
     end
 
     def priority?

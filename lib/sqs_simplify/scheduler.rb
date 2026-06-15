@@ -5,11 +5,11 @@ module SqsSimplify
     include SqsSimplify::ExecutionHook
     private_class_method :new
 
-    def initialize(message:, delay_seconds:, queue_url:, message_group_id: nil)
+    def initialize(message:, delay_seconds:, queue_url:, group_id: nil)
       @message = message
       @delay_seconds = delay_seconds
       @queue_url = queue_url
-      @message_group_id = message_group_id
+      @group_id = group_id
     end
 
     private
@@ -20,7 +20,7 @@ module SqsSimplify
 
     def build_message
       Message.new queue_url: @queue_url, body: dump_message(@message), delay_seconds: @delay_seconds,
-                  message_group_id: @message_group_id
+                  group_id: @group_id
     end
 
     def send_message
@@ -37,13 +37,13 @@ module SqsSimplify
     end
 
     class << self
-      def send_message(message:, after: nil, queue_url: nil, message_group_id: nil)
+      def send_message(message:, after: nil, queue_url: nil, group_id: nil)
         after = after.nil? ? 0 : after.to_i
         raise 'parameter must be between 0 to 960 seconds' unless after >= 0 && after < 961
 
         queue_url ||= self.queue_url
         new(message: message, delay_seconds: after, queue_url: queue_url,
-            message_group_id: message_group_id).send :send_message
+            group_id: group_id).send :send_message
       end
 
       def map_queue(nickname, &block)

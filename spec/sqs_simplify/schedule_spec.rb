@@ -24,12 +24,12 @@ RSpec.describe SqsSimplify::Scheduler do
         expect(message_id).to be_truthy
       end
 
-      it 'forwards message_group_id to the client when informed' do
+      it 'forwards group_id to the client as message_group_id when informed' do
         allow(SchedulerExample).to receive(:queue_url).and_return('http://amozon.com')
         expect_any_instance_of(SqsSimplify::FakerClient).to receive(:send_message)
           .with(hash_including(message_group_id: 'group-1'))
           .and_call_original
-        SchedulerExample.send_message(message: { a: 'a' }, message_group_id: 'group-1')
+        SchedulerExample.send_message(message: { a: 'a' }, group_id: 'group-1')
       end
 
       it 'send message to other queue' do

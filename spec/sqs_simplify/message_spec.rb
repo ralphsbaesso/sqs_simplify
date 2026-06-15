@@ -2,8 +2,8 @@
 
 RSpec.describe SqsSimplify::Message do
   describe '#to_send' do
-    it 'includes message_group_id when present' do
-      message = described_class.new(queue_url: 'http://amazon.com', body: 'body', message_group_id: 'group-1')
+    it 'includes message_group_id when group_id present' do
+      message = described_class.new(queue_url: 'http://amazon.com', body: 'body', group_id: 'group-1')
       expect(message.to_send).to include(message_group_id: 'group-1')
     end
 

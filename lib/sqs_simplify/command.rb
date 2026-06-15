@@ -27,7 +27,7 @@ module SqsSimplify
       end.parse! args
     end
 
-    def daemonize(&block)
+    def run(&block)
       @running_process = true
       block&.call(self)
       run!

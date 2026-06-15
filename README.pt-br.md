@@ -2,9 +2,9 @@
 
 Esta gem tem como objetivo utilizar o sistema de fila AWS SQS.
 Com 3 papeis principais principais:
-* **SqsSimply::Scheduler**: Envia mensagem para fila.
-* **SqsSimply::Consumer**: Consume mensagem para fila. 
-* **SqsSimply::Job**: Envia e consume mensagem para fila. 
+* **SqsSimplify::Scheduler**: Envia mensagem para fila.
+* **SqsSimplify::Consumer**: Consumir mensagem para fila. 
+* **SqsSimplify::Job**: Envia e consumir mensagem para fila. 
 
 
 ## Instalação
@@ -27,7 +27,7 @@ Crie um arquivo de configuração para ser carregado na inicialização da aplic
 
 Exemplo: *sqs_simplify.rb*
 
-Se for uma aplicação **Rails**, crie em *cong/initializes/sqs_simplify.rb*.
+Se for uma aplicação **Rails**, crie em *config/initializers/sqs_simplify.rb*.
 
 Neste arquivo você pode configurar as credencial da AWS e outras customizações.
 
@@ -40,7 +40,7 @@ SqsSimplify.configure do |config|
   config.region = 'us-east-1'
 
   config.queue_prefix = Rails.env # optional
-  config.queue_sufix = 'my_application_name' # optional
+  config.queue_suffix = 'my_application_name' # optional
 end
 ```
 ___
@@ -71,7 +71,7 @@ class WheelFactory
   
   def send_later(delay)
     message = { wheels: ['back_wheel', 'front_wheel'], type: 'motorcycle' }
-    MyScheduler.send_message(message: message, delay: delay)
+    MyScheduler.send_message(message: message, after: delay)
   end
 end
 
@@ -85,6 +85,26 @@ wheel_factory.send_now # "8685d169-f4a0-476b-b970-39ee055f957b"
 wheel_factory.send_later(120) # "5ebd6a74-8571-43e2-a9c8-7866b7598765"
 
 ```
+
+#### `group_id`
+
+O parâmetro `group_id` é enviado ao SQS como `message_group_id`. Informe-o em
+`send_message`:
+
+```ruby
+MyScheduler.send_message(message: message, group_id: 'tenant-123')
+```
+
+Seu significado depende do tipo de fila:
+
+* **Filas FIFO**: o SQS exige `message_group_id`. Mensagens com o mesmo
+  `group_id` são processadas em ordem (FIFO).
+* **Filas standard**: o `message_group_id` é usado como identificador de
+  *tenant* para o recurso de [fair queues](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fair-queues.html),
+  que mitiga o impacto de *noisy neighbor* em filas multi-tenant. Aqui ele
+  **não** garante ordenação — serve apenas para agrupar mensagens por tenant.
+
+Se omitido (`nil`), nenhum `message_group_id` é enviado.
 
 ### 2. Consumer
 
@@ -112,41 +132,39 @@ end
 
 ### 2. Job
 
-O componente Job tem a funcionalidade de enviar e consumer mensagens da fila SQS da mesma aplicação.
+O componente Job tem a funcionalidade de enviar e consumir mensagens da fila SQS da mesma aplicação.
 
 Diferente dos outros componentes, seu foco **não** é na utilização de barramento de fila.
 
-Por exemplo: Sua aplicação tem uma classe **Report** com um método **monthly_report**.
-Este método demora muita para ser executado.
-Então você pode agendar este método para ser executado mais tarde.
+Por exemplo: Sua aplicação tem uma classe **Report** que gera um relatório.
+Este processamento demora muito para ser executado.
+Então você pode agendar a execução para mais tarde.
+
+O método de negócio **deve** se chamar `perform`.
 
 ```ruby
 # app/jobs/report.rb
 
 class Report < SqsSimplify::Job
   
-  def monthly_report(list)
-    # you logic here
+  def perform(list)
+    # your logic here
     PersistReport.save(list)
   end
   
 end
 
 list = # many data
-  
-# schedule job
-# run now
-Report.monthly_report(list).later # "76107a55-43d9-4f2e-b449-02c329a51692"
 
-# run after 3 minutes
-Report.monthly_report(list).later(180) # "be6837d5-c11f-495c-a03e-cb093011f1d0"
+# enfileira para execução posterior
+Report.perform_later(list) # "76107a55-43d9-4f2e-b449-02c329a51692"
 
-# run after 10 minutes
-Report.monthly_report(list).later(600) # "004ebc02-15be-424d-8898-802033b7fca8"
+# enfileira com atraso de 180 segundos
+Report.new_job(after: 180).perform_later(list) # "be6837d5-c11f-495c-a03e-cb093011f1d0"
 
-# run now
-# attention, it will not be scheduled
-Report.monthly_report(list).now # :executed
+# executa inline, sem enfileirar
+# atenção, não será agendado
+Report.perform(list) # :executed
 ```
 
 ___
@@ -212,10 +230,6 @@ Há dois principais motivo para ocorrer:
 * **Exception**: quando ocorre uma **Exception**. Obs: também será invocado o hook **resolver_exception**.
 * **Default visibility timeout**: A mensagem não foi processada no tempo definido.
 
-**after_fork:** É invocado na inicialização do processo background para consumir as filas SQS.
-É o local ideal para inicializar/carregar dados da sua aplicação.
-Por exemplo o Rails no modo de desenvolvimento você pode carregar dados nescessário para o funcionamento da aplicação.
-
 ```ruby
 # sqs_simplify.rb
 
@@ -227,11 +241,6 @@ SqsSimplify.configure do |config|
   config.hooks.message_not_deleted do |consumer|
     logger.info "Consumer => #{consumer}"
   end
-
-  config.hooks.after_fork do
-    puts "\t***Initializing Rails project***\n"
-    Rails.application.eager_load!
-  end
 end
 ```
 
@@ -239,14 +248,16 @@ ___
 
 ## Processo Background
 ### 1. Configuração
-Para rodar o processo em background deve criar um arquivo de script.
+Para rodar o processo de consumo deve criar um arquivo de script.
+O método `run` roda um loop em foreground que consome as filas até receber
+`SIGINT` (Ctrl+C) — não daemoniza o processo.
 Exemplo de um arquivo de script nomeado de *sqs_simplify*
 
 ```ruby
 #!/usr/bin/env ruby
 
 require 'sqs_simplify/command'
-SqsSimplify::Command.new(ARGV).daemonize
+SqsSimplify::Command.new(ARGV).run
 ```
 
 Para projeto Rails você pode carragar a aplicação antes da invocação da GEM.
@@ -256,7 +267,7 @@ Exemplo de um arquivo de script nomeado de *bin/sqs_simplify*
 
 require File.expand_path(File.join(File.dirname(__FILE__), '..', 'config', 'environment'))
 require 'sqs_simplify/command'
-SqsSimplify::Command.new(ARGV).daemonize
+SqsSimplify::Command.new(ARGV).run
 ```
 
 E deve dar permissão de execução.
@@ -275,8 +286,8 @@ Usage: sqs_simplify [options]
     -e, --environment=environment    Environment
         --queues=queues              queues that will be consumed
         --priority                   with priority in the queues
-        --pid-dir=DIR                Specifies an alternate directory in which to store the process ids.
-        --log-dir=DIR                Specifies an alternate directory in which to store the delayed_job log.
+    -f, --fork                       parallel in processes
+    -t, --thread                     parallel in threads
 
 
 ````

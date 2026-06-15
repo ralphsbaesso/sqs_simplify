@@ -1,11 +1,44 @@
 # SqsSimplify
 
-This gem aims to make working with the AWS SQS queue system easier.
+[![Gem Version](https://badge.fury.io/rb/sqs_simplify.svg)](https://badge.fury.io/rb/sqs_simplify)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.0-red.svg)](https://www.ruby-lang.org)
+
+A high-level Ruby DSL on top of `aws-sdk-sqs` for producing and consuming AWS SQS messages with minimal boilerplate.
+
 It has 3 main roles:
 * **SqsSimplify::Scheduler**: Sends messages to a queue.
 * **SqsSimplify::Consumer**: Consumes messages from a queue.
 * **SqsSimplify::Job**: Sends and consumes messages from a queue.
 
+> 🇧🇷 Uma versão deste documento em português está disponível em [README.pt-br.md](README.pt-br.md).
+
+## Table of Contents
+
+* [Requirements](#requirements)
+* [Installation](#installation)
+* [How to use](#how-to-use)
+  * [Initial Configuration](#1-initial-configuration)
+  * [Scheduler](#2-scheduler)
+  * [Consumer](#3-consumer)
+  * [Job](#4-job)
+* [Configuration](#configuration)
+  * [Global Configuration](#1-global-configuration)
+  * [Hooks](#2-hooks)
+* [Background Process](#background-process)
+* [Advanced features](#advanced-features)
+* [Development](#development)
+* [Contributing](#contributing)
+* [License](#license)
+
+## Requirements
+
+* Ruby `>= 3.0.0`
+* Runtime dependencies (installed automatically with the gem):
+  * [`aws-sdk-sqs`](https://rubygems.org/gems/aws-sdk-sqs) `~> 1.116`
+  * [`parallel`](https://rubygems.org/gems/parallel) `~> 2.1`
+
+You also need valid AWS credentials with access to SQS.
 
 ## Installation
 
@@ -18,6 +51,10 @@ gem 'sqs_simplify'
 And then execute:
 
     $ bundle install
+
+Or install it yourself as:
+
+    $ gem install sqs_simplify
 ___
 
 ## How to use
@@ -293,9 +330,52 @@ Usage: sqs_simplify [options]
 ````
 
 ___
+
+## Advanced features
+
+Beyond the basics above, the gem also supports:
+
+* **`map_queue(nickname, &block)`** — route a single Scheduler to alternate queues
+  dynamically (`SqsSimplify::Scheduler`).
+* **Per-call destination override** — pass `queue_url:` to `send_message` to send a
+  message to a specific queue at call time.
+* **Class-level `set` DSL** — override per-class settings such as the queue name,
+  visibility timeout, serialization (`dump_message`/`load_message`) and more, e.g.
+  `set :queue_name, 'custom_name'`.
+* **Automatic dead-letter queues** — every queue gets a paired `<name>_dead`
+  dead-letter queue.
+* **Additional hooks** — besides `resolver_exception` and `message_not_deleted`, the
+  pipeline also supports `before`/`after` (`:each` / `:all`) and `around` hooks.
+* **Testing without AWS** — set `config.faker = true` to use the in-memory
+  `FakerClient`, or `config.stub_responses = true` to stub the `aws-sdk-sqs` client.
+
+## Development
+
+After checking out the repo, install dependencies and run the test suite:
+
+```bash
+bin/setup                  # install dependencies
+bundle exec rake spec      # run the full test suite
+bundle exec rubocop        # lint
+bin/console                # interactive prompt to experiment
+```
+
+Tests run against an in-memory fake SQS client, so no real AWS access is required.
+
+To install this gem onto your local machine, run `bundle exec rake install`. To
+release a new version, update the version number in `lib/sqs_simplify/version.rb`,
+then run `bundle exec rake release`.
+
 ## Contributing
 
-https://github.com/ralphsbaesso/sqs_simplify.
+Bug reports and pull requests are welcome on GitHub at
+https://github.com/ralphsbaesso/sqs_simplify. To contribute:
+
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b my-feature`).
+3. Commit your changes and make sure the tests (`bundle exec rake spec`) and linter
+   (`bundle exec rubocop`) pass.
+4. Open a pull request.
 
 
 ## License

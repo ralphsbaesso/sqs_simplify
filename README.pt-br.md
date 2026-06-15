@@ -1,11 +1,44 @@
 # SqsSimplify
 
-Esta gem tem como objetivo utilizar o sistema de fila AWS SQS.
-Com 3 papeis principais principais:
-* **SqsSimplify::Scheduler**: Envia mensagem para fila.
-* **SqsSimplify::Consumer**: Consumir mensagem para fila. 
-* **SqsSimplify::Job**: Envia e consumir mensagem para fila. 
+[![Gem Version](https://badge.fury.io/rb/sqs_simplify.svg)](https://badge.fury.io/rb/sqs_simplify)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.0-red.svg)](https://www.ruby-lang.org)
 
+Uma DSL Ruby de alto nível sobre o `aws-sdk-sqs` para produzir e consumir mensagens do AWS SQS com o mínimo de boilerplate.
+
+Possui 3 papéis principais:
+* **SqsSimplify::Scheduler**: Envia mensagens para uma fila.
+* **SqsSimplify::Consumer**: Consome mensagens de uma fila.
+* **SqsSimplify::Job**: Envia e consome mensagens de uma fila.
+
+> 🇺🇸 An English version of this document is available at [README.md](README.md).
+
+## Sumário
+
+* [Requisitos](#requisitos)
+* [Instalação](#instalação)
+* [Como usar](#como-usar)
+  * [Configuração Inicial](#1-configuração-inicial)
+  * [Scheduler](#2-scheduler)
+  * [Consumer](#3-consumer)
+  * [Job](#4-job)
+* [Configurações](#configurações)
+  * [Configuração Global](#1-configuração-global)
+  * [Hooks](#2-hooks)
+* [Processo Background](#processo-background)
+* [Recursos avançados](#recursos-avançados)
+* [Desenvolvimento](#desenvolvimento)
+* [Contribuição](#contribuição)
+* [Licença](#licença)
+
+## Requisitos
+
+* Ruby `>= 3.0.0`
+* Dependências de runtime (instaladas automaticamente junto com a gem):
+  * [`aws-sdk-sqs`](https://rubygems.org/gems/aws-sdk-sqs) `~> 1.116`
+  * [`parallel`](https://rubygems.org/gems/parallel) `~> 2.1`
+
+Você também precisa de credenciais AWS válidas com acesso ao SQS.
 
 ## Instalação
 
@@ -18,6 +51,10 @@ gem 'sqs_simplify'
 E execute:
 
     $ bundle install
+
+Ou instale você mesmo com:
+
+    $ gem install sqs_simplify
 ___
 
 ## Como usar
@@ -29,7 +66,7 @@ Exemplo: *sqs_simplify.rb*
 
 Se for uma aplicação **Rails**, crie em *config/initializers/sqs_simplify.rb*.
 
-Neste arquivo você pode configurar as credencial da AWS e outras customizações.
+Neste arquivo você pode configurar as credenciais da AWS e outras customizações.
 
 ```ruby
 # sqs_simplify.rb
@@ -48,11 +85,11 @@ ___
 
 ### 2. Scheduler
 
-O componente Scheduler tem a funcionalidade de enviar mesagens para a fila SQS.
+O componente Scheduler é responsável por enviar mensagens para a fila SQS.
 
-Seu foco principal é na utilização de barramento de fila entre duas aplicações distintas.
+Seu foco principal é na utilização de uma fila como barramento entre duas aplicações distintas.
 
-Por exemplo: A aplicação **A** tem um Scheduler que envia mesagem para a fila SQS mas quem vai consumir esta mensagem será a aplicação **B**.
+Por exemplo: a aplicação **A** tem um Scheduler que envia mensagem para a fila SQS, mas quem vai consumir esta mensagem será a aplicação **B**.
 
 ```ruby
 # app/jobs/my_scheduler
@@ -106,13 +143,13 @@ Seu significado depende do tipo de fila:
 
 Se omitido (`nil`), nenhum `message_group_id` é enviado.
 
-### 2. Consumer
+### 3. Consumer
 
-O componente Consumer tem a funcionalidade de consumir mesagens para a fila SQS.
+O componente Consumer é responsável por consumir mensagens da fila SQS.
 
-Seu foco principal tambeḿ é na utilização de barramento de fila entre duas aplicações distintas.
+Seu foco principal também é na utilização de uma fila como barramento entre duas aplicações distintas.
 
-Por exemplo: A aplicação **B** tem um Consumer que solicita mesagem da fila SQS que foi enviada pela aplicação **A**.
+Por exemplo: a aplicação **B** tem um Consumer que solicita mensagens da fila SQS que foram enviadas pela aplicação **A**.
 
 ```ruby
 # app/jobs/motorcycle_assembler.rb
@@ -130,13 +167,13 @@ end
 ```
 
 
-### 2. Job
+### 4. Job
 
-O componente Job tem a funcionalidade de enviar e consumir mensagens da fila SQS da mesma aplicação.
+O componente Job é responsável por enviar e consumir mensagens da fila SQS dentro da mesma aplicação.
 
-Diferente dos outros componentes, seu foco **não** é na utilização de barramento de fila.
+Diferente dos outros componentes, seu foco **não** é na utilização de uma fila como barramento.
 
-Por exemplo: Sua aplicação tem uma classe **Report** que gera um relatório.
+Por exemplo: sua aplicação tem uma classe **Report** que gera um relatório.
 Este processamento demora muito para ser executado.
 Então você pode agendar a execução para mais tarde.
 
@@ -174,7 +211,7 @@ ___
 ### 1. Configuração Global
 
 #### SqsSimplify
-Toda configuração feito na class SqsSimplify será aplicado em todos os componentes.
+Toda configuração feita na classe SqsSimplify será aplicada em todos os componentes.
 
 Exemplo:
 
@@ -190,9 +227,9 @@ SqsSimplify.configure do |config|
 end
 ```
 
-Com esta configuração todos os componentes, Scheduler, Consumer e Job, terão a mesma configuração.
+Com esta configuração todos os componentes — Scheduler, Consumer e Job — terão a mesma configuração.
 
-Todos terão acesso as filas SQS de *us-east-2*
+Todos terão acesso às filas SQS de *us-east-2*
 
 Todos terão o prefixo de *production*
 
@@ -218,17 +255,17 @@ MyJob.queue_name # "production_my_job"
 
 ```
 
-### 1.1 Hooks
+### 2. Hooks
 
 **resolver_exception:** É invocado sempre que ocorrer uma **Exception** na sua aplicação.
-Disponibiliza dois parâmetro:
-* **primeiro parâmetro** é uma **Exception**. 
-* **segundo parâmetro** pode variar de acordo com o componente e a onde ocorreu a **Exception**.
+Disponibiliza dois parâmetros:
+* o **primeiro parâmetro** é uma **Exception**.
+* o **segundo parâmetro** pode variar de acordo com o componente e onde ocorreu a **Exception**.
 
-**message_not_deleted:** É invocado quando um Job ou Consumer pega uma mesagem da fila SQS não não consegue apagá-la.
-Há dois principais motivo para ocorrer:
+**message_not_deleted:** É invocado quando um Job ou Consumer pega uma mensagem da fila SQS e não consegue apagá-la.
+Há dois principais motivos para isso ocorrer:
 * **Exception**: quando ocorre uma **Exception**. Obs: também será invocado o hook **resolver_exception**.
-* **Default visibility timeout**: A mensagem não foi processada no tempo definido.
+* **Default visibility timeout**: a mensagem não foi processada no tempo definido.
 
 ```ruby
 # sqs_simplify.rb
@@ -260,7 +297,7 @@ require 'sqs_simplify/command'
 SqsSimplify::Command.new(ARGV).run
 ```
 
-Para projeto Rails você pode carragar a aplicação antes da invocação da GEM.
+Para projeto Rails você pode carregar a aplicação antes da invocação da GEM.
 Exemplo de um arquivo de script nomeado de *bin/sqs_simplify*
 ```ruby
 #!/usr/bin/env ruby
@@ -275,8 +312,8 @@ E deve dar permissão de execução.
 $ chmod +x sqs_simplify
 ````
 
-### 1. Comandos
-Para ver opções do comando execute no diretório do arquivo:
+### 2. Comandos
+Para ver as opções do comando, execute no diretório do arquivo:
 
 ````bash
 $ sqs_simplify -h
@@ -293,12 +330,55 @@ Usage: sqs_simplify [options]
 ````
 
 ___
+
+## Recursos avançados
+
+Além do básico apresentado acima, a gem também oferece:
+
+* **`map_queue(nickname, &block)`** — roteia um único Scheduler para filas
+  alternativas dinamicamente (`SqsSimplify::Scheduler`).
+* **Sobrescrita de destino por chamada** — passe `queue_url:` para `send_message`
+  para enviar uma mensagem a uma fila específica no momento da chamada.
+* **DSL `set` por classe** — sobrescreve configurações por classe, como o nome da
+  fila, o visibility timeout, a serialização (`dump_message`/`load_message`) e mais,
+  por exemplo `set :queue_name, 'custom_name'`.
+* **Dead-letter queues automáticas** — cada fila ganha uma `<nome>_dead`
+  pareada como dead-letter queue.
+* **Hooks adicionais** — além de `resolver_exception` e `message_not_deleted`, o
+  pipeline também suporta os hooks `before`/`after` (`:each` / `:all`) e `around`.
+* **Testes sem AWS** — defina `config.faker = true` para usar o `FakerClient` em
+  memória, ou `config.stub_responses = true` para stubar o cliente `aws-sdk-sqs`.
+
+## Desenvolvimento
+
+Após clonar o repositório, instale as dependências e rode a suíte de testes:
+
+```bash
+bin/setup                  # instala as dependências
+bundle exec rake spec      # roda a suíte de testes completa
+bundle exec rubocop        # lint
+bin/console                # prompt interativo para experimentar
+```
+
+Os testes rodam contra um cliente SQS falso em memória, então nenhum acesso real à
+AWS é necessário.
+
+Para instalar esta gem na sua máquina local, rode `bundle exec rake install`. Para
+publicar uma nova versão, atualize o número da versão em `lib/sqs_simplify/version.rb`
+e então rode `bundle exec rake release`.
+
 ## Contribuição
 
-https://github.com/ralphsbaesso/sqs_simplify.
+Relatos de bugs e pull requests são bem-vindos no GitHub em
+https://github.com/ralphsbaesso/sqs_simplify. Para contribuir:
+
+1. Faça um fork do repositório.
+2. Crie um branch de feature (`git checkout -b minha-feature`).
+3. Faça commit das suas alterações e garanta que os testes (`bundle exec rake spec`)
+   e o linter (`bundle exec rubocop`) passem.
+4. Abra um pull request.
 
 
-## License
+## Licença
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
-
+A gem está disponível como código aberto sob os termos da [Licença MIT](https://opensource.org/licenses/MIT).
